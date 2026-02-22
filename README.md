@@ -119,9 +119,3 @@ uvicorn app:app --reload
 
 - El almacenamiento en Hugging Face Spaces (versión gratuita) es **efímero**. La `finanzas.db` y el CSV deben estar commiteados en el repositorio para que se restauren al despertar el Space.
 - Para desarrollo local del frontend, cambiar la `BASE_URL` en `api.js` a `http://localhost:8000`.
-
----
-
-## 👥 Equipo
-
-Proyecto desarrollado para la asignatura de [nombre de la asignatura] — [Universidad] — [Año]
