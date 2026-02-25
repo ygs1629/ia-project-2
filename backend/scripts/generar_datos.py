@@ -14,7 +14,7 @@ SEED = 42
 random.seed(SEED)
 np.random.seed(SEED)
 
-FECHA_FIN   = date.today().replace(day=1) - timedelta(days=1)   # fin = último día del mes anterior
+FECHA_FIN = date(2026, 3, 5) 
 FECHA_INICIO = (FECHA_FIN - timedelta(days=18 * 30)).replace(day=1)
 
 OUTPUT_PATH = Path(__file__).parent.parent / "data" / "transacciones_sucias.csv"
