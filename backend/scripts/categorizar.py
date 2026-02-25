@@ -67,7 +67,7 @@ def init_db(conn: sqlite3.Connection) -> None:
 
         CREATE TABLE IF NOT EXISTS objetivos (
             id               INTEGER PRIMARY KEY AUTOINCREMENT,
-            nombre           TEXT    NOT NULL,
+            nombre           TEXT    NOT NULL UNIQUE,
             importe_objetivo REAL    NOT NULL,
             importe_actual   REAL    NOT NULL DEFAULT 0,
             fecha_limite     DATE    NOT NULL
