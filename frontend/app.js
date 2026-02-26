@@ -264,7 +264,7 @@ async function cambiarPeriodo(nuevoPeriodo) {
   try {
     const [resumen, datosDashboard, topGastos] = await Promise.all([
       fetchResumen(nuevoPeriodo),
-      fetchDashboardData(),
+      fetchDashboardData(nuevoPeriodo),
       fetchTopGastos(nuevoPeriodo, 5),
     ]);
 
@@ -471,7 +471,7 @@ async function inicializarDashboard() {
 
   try {
     const [datos, resumen, topGastos] = await Promise.all([
-      fetchDashboardData(),
+      fetchDashboardData(PERIODO_ACTIVO),
       fetchResumen(PERIODO_ACTIVO),
       fetchTopGastos(PERIODO_ACTIVO, 5),
     ]);

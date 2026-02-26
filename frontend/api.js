@@ -12,10 +12,13 @@
 
 const PERIODOS_VALIDOS = ["semana", "mes", "trimestre", "semestre", "anual"];
 
-// fetchDashboardData — GET /api/dashboard
+// fetchDashboardData — GET /api/dashboard?periodo=X
 
-async function fetchDashboardData() {
-  const url    = `${BASE_URL}/api/dashboard`;
+async function fetchDashboardData(periodo = "mes") {
+  if (!PERIODOS_VALIDOS.includes(periodo)) {
+    throw new Error(`Período inválido: "${periodo}". Usar: ${PERIODOS_VALIDOS.join(" | ")}`);
+  }
+  const url    = `${BASE_URL}/api/dashboard?periodo=${encodeURIComponent(periodo)}`;
   const apiKey = localStorage.getItem("google_api_key");
 
   const respuesta = await fetch(url, {
