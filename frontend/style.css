@@ -1151,3 +1151,43 @@ footer {
 .top-gastos-item + .top-gastos-item {
   border-top: 1px solid rgba(30,45,69,.4);
 }
+
+/* Modal objetivo — overlay centrado igual que modalApiKey */
+#modalObjetivo {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 12, 18, 0.88);
+  backdrop-filter: blur(6px);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn .3s ease;
+}
+
+/* Botón editar objetivo */
+.btn-editar-objetivo {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .25rem .65rem;
+  background: rgba(8, 145, 178, .1);
+  border: 1px solid rgba(8, 145, 178, .3);
+  border-radius: 4px;
+  color: var(--accent);
+  font-size: .7rem;
+  font-family: 'DM Mono', monospace;
+  cursor: pointer;
+  transition: background .2s, border-color .2s;
+  letter-spacing: .03em;
+}
+.btn-editar-objetivo:hover {
+  background: rgba(8, 145, 178, .2);
+  border-color: rgba(8, 145, 178, .5);
+}
+
+/* Modal objetivo — campos de fecha y número */
+#modalObjetivo input[type="date"],
+#modalObjetivo input[type="number"] {
+  color-scheme: dark;
+}

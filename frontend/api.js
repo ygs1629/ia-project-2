@@ -129,6 +129,7 @@ async function enviarMensajeChat(mensaje, historial = []) {
 }
 
 // Genera o recupera un user_id persistente en localStorage
+
 function _getUserId() {
   let uid = localStorage.getItem("sfe_user_id");
   if (!uid) {
@@ -136,4 +137,31 @@ function _getUserId() {
     localStorage.setItem("sfe_user_id", uid);
   }
   return uid;
+}
+
+// crearObjetivo — POST /api/objetivos
+
+async function crearObjetivo(nombre, importeObjetivo, importeActual, fechaLimite) {
+  const url    = `${BASE_URL}/api/objetivos`;
+  const apiKey = localStorage.getItem("google_api_key");
+
+  const respuesta = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(apiKey && { Authorization: `Bearer ${apiKey}` }),
+    },
+    body: JSON.stringify({
+      nombre,
+      importe_objetivo: importeObjetivo,
+      importe_actual:   importeActual,
+      fecha_limite:     fechaLimite,
+    }),
+  });
+
+  if (!respuesta.ok) {
+    const err = await respuesta.json().catch(() => ({}));
+    throw new Error(err.detail || `HTTP ${respuesta.status}: ${respuesta.statusText}`);
+  }
+  return await respuesta.json();
 }
