@@ -7,12 +7,28 @@ La API Key se recibe como parámetro en cada invocación,
 NUNCA se hardcodea ni se guarda en el servidor.
 """
 
+from datetime import date
+
+from langchain_core.messages import SystemMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
 
 from .state import AgentState
 from .tools import ALL_TOOLS
+
+
+def _build_system_prompt() -> str:
+    hoy = date.today()
+    fecha_str = hoy.strftime("%-d de %B de %Y")  # ej. "26 de febrero de 2026"
+    dia_semana = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"][hoy.weekday()]
+    return (
+        f"Eres un asistente financiero personal. "
+        f"Hoy es {dia_semana}, {fecha_str}. "
+        f"Cuando el usuario pregunte por la fecha actual, el día, el mes o el año, responde directamente con este dato sin usar ninguna herramienta. "
+        f"Para consultar datos financieros usa siempre las herramientas disponibles; nunca inventes cifras. "
+        f"Responde siempre en español, de forma concisa y empática."
+    )
 
 # Nombres de nodos para claridad
 NODE_LLM = "llm"
@@ -34,8 +50,10 @@ def build_graph(api_key: str) -> "CompiledGraph":
         google_api_key=api_key,
     ).bind_tools(ALL_TOOLS)
 
+    system_prompt = SystemMessage(content=_build_system_prompt())
+
     def llm_node(state: AgentState) -> dict:
-        response = llm.invoke(state["messages"])
+        response = llm.invoke([system_prompt] + state["messages"])
         return {"messages": [response]}
 
     # edge condicional: ¿el LLM quiere ejecutar una tool?
