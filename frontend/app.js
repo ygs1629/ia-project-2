@@ -202,10 +202,16 @@ function renderizarObjetivo(obj) {
   if (elNombre) elNombre.textContent = obj.nombre;
 
   const elActual = document.getElementById("objetivoActual");
-  if (elActual) elActual.textContent = formatearEuro(obj.importe_actual);
+  if (elActual) {
+    elActual.textContent = formatearEuro(obj.importe_actual);
+    elActual.dataset.raw = obj.importe_actual;
+  }
 
   const elTotal = document.getElementById("objetivoTotal");
-  if (elTotal) elTotal.textContent = formatearEuro(obj.importe_objetivo);
+  if (elTotal) {
+    elTotal.textContent = formatearEuro(obj.importe_objetivo);
+    elTotal.dataset.raw = obj.importe_objetivo;
+  }
 
   const elBarra = document.getElementById("objetivoBarra");
   if (elBarra) {
@@ -228,6 +234,7 @@ function renderizarObjetivo(obj) {
 
   const elFecha = document.getElementById("objetivoFecha");
   if (elFecha) {
+    elFecha.dataset.raw = obj.fecha_limite;
     elFecha.textContent = new Date(obj.fecha_limite).toLocaleDateString("es-ES", {
       day: "numeric", month: "long", year: "numeric",
     });
@@ -465,6 +472,73 @@ function verificarApiKey() {
   return true;
 }
 
+// abre el modal de objetivo — rellena los campos si ya hay datos cargados
+function abrirModalObjetivo() {
+  const modal = document.getElementById("modalObjetivo");
+  if (!modal) return;
+
+  // Pre-rellenar con los valores actuales si están visibles en la card
+  const nombre  = document.getElementById("objetivoNombre")?.textContent?.trim();
+  const total   = document.getElementById("objetivoTotal")?.dataset?.raw;
+  const actual  = document.getElementById("objetivoActual")?.dataset?.raw;
+  const fecha   = document.getElementById("objetivoFecha")?.dataset?.raw;
+
+  if (nombre && !nombre.includes("skeleton")) {
+    const inNombre = document.getElementById("inputObjetivoNombre");
+    if (inNombre) inNombre.value = nombre;
+  }
+  if (total)  { const el = document.getElementById("inputObjetivoImporte"); if (el) el.value = total; }
+  if (actual) { const el = document.getElementById("inputObjetivoActual");  if (el) el.value = actual; }
+  if (fecha)  { const el = document.getElementById("inputObjetivoFecha");   if (el) el.value = fecha; }
+
+  // fecha mínima = mañana
+  const inFecha = document.getElementById("inputObjetivoFecha");
+  if (inFecha && !inFecha.value) {
+    const manana = new Date();
+    manana.setDate(manana.getDate() + 1);
+    inFecha.min = manana.toISOString().split("T")[0];
+  }
+
+  const errEl = document.getElementById("modalObjetivoError");
+  if (errEl) errEl.style.display = "none";
+
+  modal.style.display = "flex";
+  document.getElementById("inputObjetivoNombre")?.focus();
+}
+
+// valida y envía el formulario del objetivo
+async function guardarObjetivo() {
+  const nombre  = document.getElementById("inputObjetivoNombre")?.value.trim();
+  const importe = parseFloat(document.getElementById("inputObjetivoImporte")?.value);
+  const actual  = parseFloat(document.getElementById("inputObjetivoActual")?.value || "0");
+  const fecha   = document.getElementById("inputObjetivoFecha")?.value;
+  const errEl   = document.getElementById("modalObjetivoError");
+  const btn     = document.querySelector("#modalObjetivo .modal-btn");
+
+  const mostrarError = (msg) => {
+    if (errEl) { errEl.textContent = msg; errEl.style.display = "block"; }
+  };
+
+  if (!nombre)           return mostrarError("⚠ El nombre no puede estar vacío.");
+  if (!importe || importe <= 0) return mostrarError("⚠ El importe debe ser mayor que 0.");
+  if (isNaN(actual) || actual < 0) return mostrarError("⚠ El importe ya ahorrado no puede ser negativo.");
+  if (!fecha)            return mostrarError("⚠ Seleccioná una fecha límite.");
+  if (actual >= importe) return mostrarError("⚠ Lo ya ahorrado no puede superar el objetivo.");
+
+  if (errEl) errEl.style.display = "none";
+  if (btn) { btn.disabled = true; btn.textContent = "Guardando…"; }
+
+  try {
+    const obj = await crearObjetivo(nombre, importe, actual, fecha);
+    document.getElementById("modalObjetivo").style.display = "none";
+    renderizarObjetivo(obj);
+    if (btn) { btn.disabled = false; btn.textContent = "Guardar objetivo"; }
+  } catch (err) {
+    mostrarError(`Error al guardar: ${err.message}`);
+    if (btn) { btn.disabled = false; btn.textContent = "Guardar objetivo"; }
+  }
+}
+
 // las tres peticiones principales van en paralelo para no esperar en cadena
 async function inicializarDashboard() {
   verificarApiKey();
@@ -493,11 +567,32 @@ async function inicializarDashboard() {
     fetchObjetivo()
       .then((obj) => renderizarObjetivo(obj))
       .catch((err) => {
-        console.warn("SFE: no se pudo cargar el objetivo →", err.message);
-        const cont = document.getElementById("objetivosContainer");
-        if (cont) {
-          cont.innerHTML = `<p style="color:var(--text-muted);font-size:.75rem;padding:1rem 0;">No se pudo cargar el objetivo de ahorro.</p>`;
-          cont.style.opacity = "1";
+        // Si no hay objetivo definido (404) mostramos el modal para crearlo
+        if (err.message.includes("404")) {
+          const cont = document.getElementById("objetivosContainer");
+          if (cont) {
+            cont.innerHTML = `
+              <div class="panel-header">
+                <h2 class="panel-title">Objetivo de ahorro</h2>
+              </div>
+              <div style="padding:1.5rem 0;text-align:center;">
+                <p style="color:var(--text-muted);font-size:.82rem;margin-bottom:1rem;">
+                  Aún no tienes ningún objetivo definido.
+                </p>
+                <button class="modal-btn" style="width:auto;padding:.55rem 1.5rem;font-size:.82rem;" onclick="abrirModalObjetivo()">
+                  + Crear objetivo
+                </button>
+              </div>
+            `;
+            cont.style.opacity = "1";
+          }
+        } else {
+          console.warn("SFE: no se pudo cargar el objetivo →", err.message);
+          const cont = document.getElementById("objetivosContainer");
+          if (cont) {
+            cont.innerHTML = `<p style="color:var(--text-muted);font-size:.75rem;padding:1rem 0;">No se pudo cargar el objetivo de ahorro.</p>`;
+            cont.style.opacity = "1";
+          }
         }
       });
 
@@ -535,6 +630,21 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   }
+
+  // Cerrar modal objetivo con Escape
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      const modal = document.getElementById("modalObjetivo");
+      if (modal && modal.style.display !== "none") {
+        modal.style.display = "none";
+      }
+    }
+  });
+
+  // Enviar formulario objetivo con Enter en el campo de fecha
+  document.getElementById("inputObjetivoFecha")?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") guardarObjetivo();
+  });
 
   setTimeout(() => {
     _agregarBurbuja(
