@@ -19,20 +19,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from langchain_core.messages import HumanMessage, AIMessage
 from pydantic import BaseModel
 
-from core.graph import build_graph
-
-# Importaciones opcionales (para predicciones y alertas que aún no están desarrolladas)
-try:
-    from core.predicciones import calcular_prediccion_mes
-    _predicciones_disponibles = True
-except (ImportError, AttributeError):
-    _predicciones_disponibles = False
-
-try:
-    from core.alertas import generar_alerta
-    _alertas_disponibles = True
-except (ImportError, AttributeError):
-    _alertas_disponibles = False
+from agent.graph import build_graph
 
 DB_PATH = Path(__file__).parent.parent / "data" / "finanzas.db"
 PERIODOS_VALIDOS = {"semana", "mes", "trimestre", "semestre", "anual"}
@@ -139,17 +126,8 @@ def get_dashboard(periodo: str = Query(default="mes")):
 
     gastos_por_categoria = {row["categoria"]: row["total"] for row in rows}
 
-    # stub hasta que alertas.py esté implementado
+    # alertas desactivadas (alertas.py eliminado)
     alerta = {"activa": False, "mensaje": None}
-    if _alertas_disponibles:
-        try:
-            raw = generar_alerta()
-            alerta = {
-                "activa":  raw.get("alerta", False),
-                "mensaje": raw.get("mensaje"),
-            }
-        except Exception:
-            pass
 
     return {
         "periodo":              periodo,
