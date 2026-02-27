@@ -1,7 +1,6 @@
 // app.js — Capa de presentación del dashboard
 //
 // Módulos:
-//    gestionarAlerta(alerta)              → muestra/oculta el banner de alerta
 //    renderizarResumen(resumen)           → tarjetas ingresos / gastos / ahorro
 //    renderizarGrafico(gastosPorCat)      → donut chart con Chart.js
 //    renderizarTopGastos(lista)           → panel Top 5 gastos
@@ -47,21 +46,6 @@ function formatearEuro(valor) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(valor);
-}
-
-// muestra u oculta el banner superior según lo que diga el backend
-function gestionarAlerta(alerta) {
-  const banner = document.getElementById("bannerAlerta");
-  if (!banner) return;
-
-  if (alerta.activa) {
-    banner.textContent = alerta.mensaje;
-    banner.style.display = "block";
-    banner.setAttribute("role", "alert");
-  } else {
-    banner.style.display = "none";
-    banner.removeAttribute("role");
-  }
 }
 
 // rellena las tres tarjetas de resumen 
@@ -597,13 +581,12 @@ async function inicializarDashboard() {
       fetchTopGastos(PERIODO_ACTIVO, 5),
     ]);
 
-    if (!datos?.gastos_por_categoria || !datos?.alerta) {
+    if (!datos?.gastos_por_categoria) {
       throw new Error("La respuesta de /api/dashboard no cumple el contrato JSON.");
     }
 
     renderizarResumen(resumen);
     renderizarGrafico(datos.gastos_por_categoria);
-    gestionarAlerta(datos.alerta);
     renderizarTopGastos(topGastos);
 
     document.querySelectorAll(".filtro-btn").forEach((btn) => {

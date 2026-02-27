@@ -2,7 +2,7 @@
 routes.py — Endpoints de la API del asistente financiero.
 
 Endpoints que consume el frontend (api.js):
-    GET  /api/dashboard                     → gastos_por_categoria + alerta
+    GET  /api/dashboard                     → gastos_por_categoria
     GET  /api/resumen?periodo=X             → { ingresos, gastos, ahorro }
     GET  /api/top-gastos?periodo=X&n=5      → lista de los N gastos más altos
     GET  /api/objetivo                      → primer objetivo (el frontend solo renderiza uno)
@@ -105,8 +105,8 @@ class ObjetivoIn(BaseModel):
 @router.get("/dashboard")
 def get_dashboard(periodo: str = Query(default="mes")):
     """
-    Devuelve gastos por categoría del periodo y el estado de alerta.
-    El frontend usa este endpoint SOLO para el gráfico donut y la alerta.
+    Devuelve gastos por categoría del periodo.
+    El frontend usa este endpoint SOLO para el gráfico donut.
     El balance y el top de gastos tienen endpoints propios.
     """
     _validar_periodo(periodo)
@@ -126,13 +126,9 @@ def get_dashboard(periodo: str = Query(default="mes")):
 
     gastos_por_categoria = {row["categoria"]: row["total"] for row in rows}
 
-    # alertas desactivadas (alertas.py eliminado)
-    alerta = {"activa": False, "mensaje": None}
-
     return {
         "periodo":              periodo,
         "gastos_por_categoria": gastos_por_categoria,
-        "alerta":               alerta,
     }
 
 # GET /api/resumen?periodo=X

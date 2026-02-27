@@ -196,21 +196,6 @@ header {
   letter-spacing: .04em;
 }
 
-/* banner de alerta */
-#bannerAlerta {
-  display: none;
-  margin-top: 1.5rem;
-  padding: .9rem 1.25rem;
-  background: rgba(245, 158, 11, 0.08);
-  border: 1px solid rgba(245, 158, 11, 0.35);
-  border-left: 3px solid var(--amber);
-  border-radius: var(--radius-sm);
-  color: #FCD34D;
-  font-size: .8rem;
-  letter-spacing: .03em;
-  animation: fadeUp .4s ease both;
-}
-
 /* título de página */
 .page-title-block {
   padding: 2.5rem 0 2rem;
