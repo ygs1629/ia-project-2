@@ -198,7 +198,7 @@ def get_top_gastos(
         for row in rows
     ]
 
-# GET /api/objetivo  (singular)
+# GET /api/objetivo  
 
 @router.get("/objetivo")
 def get_objetivo():
@@ -214,11 +214,11 @@ def get_objetivo():
 
     return _objetivo_dict(row, hoy)
 
-# POST /api/objetivos  — crear o actualizar (todavía no implementado en el frontend)
+# POST /api/objetivo
 
 @router.post("/objetivos", status_code=201)
 def post_objetivo(objetivo: ObjetivoIn):
-    """Crea o actualiza un objetivo (upsert por nombre)."""
+    """Reemplaza el único objetivo de ahorro. Siempre hay como máximo 1."""
     try:
         date.fromisoformat(objetivo.fecha_limite)
     except ValueError:
@@ -229,21 +229,18 @@ def post_objetivo(objetivo: ObjetivoIn):
 
     hoy = date.today()
     with _get_conn() as conn:
+        # Borra cualquier objetivo existente y crea el nuevo con id=1 siempre
+        conn.execute("DELETE FROM objetivos")
         conn.execute(
             """
-            INSERT INTO objetivos (nombre, importe_objetivo, importe_actual, fecha_limite)
-            VALUES (:nombre, :importe_objetivo, :importe_actual, :fecha_limite)
-            ON CONFLICT(nombre) DO UPDATE SET
-                importe_objetivo = excluded.importe_objetivo,
-                importe_actual   = excluded.importe_actual,
-                fecha_limite     = excluded.fecha_limite
+            INSERT INTO objetivos (id, nombre, importe_objetivo, importe_actual, fecha_limite)
+            VALUES (1, :nombre, :importe_objetivo, :importe_actual, :fecha_limite)
             """,
             objetivo.model_dump(),
         )
         conn.commit()
         row = conn.execute(
-            "SELECT id, nombre, importe_objetivo, importe_actual, fecha_limite FROM objetivos WHERE nombre = ?",
-            (objetivo.nombre,),
+            "SELECT id, nombre, importe_objetivo, importe_actual, fecha_limite FROM objetivos WHERE id = 1",
         ).fetchone()
 
     return _objetivo_dict(row, hoy)
