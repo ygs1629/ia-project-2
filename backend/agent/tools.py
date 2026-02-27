@@ -144,30 +144,27 @@ def get_resumen_ingresos_vs_gastos(periodo: str) -> dict:
     }
 
 @tool
-def get_progreso_objetivo(nombre: str) -> dict:
+def get_progreso_objetivo(nombre: str = "") -> dict:
     """
-    Devuelve el estado actual de un objetivo de ahorro.
-
-    Parámetros:
-        nombre: nombre del objetivo tal como fue creado (ej. 'Vacaciones de verano')
+    Devuelve el estado actual del objetivo de ahorro activo.
+    Solo existe un objetivo a la vez; el parámetro nombre se ignora.
 
     Devuelve un dict con:
         - nombre, importe_objetivo, importe_actual, fecha_limite
         - falta: cuánto queda por ahorrar
         - dias_restantes: días hasta la fecha límite
         - porcentaje: % completado
-        - en_plazo: bool (True si la proyección lineal es suficiente)
     """
     sql = """
         SELECT nombre, importe_objetivo, importe_actual, fecha_limite
         FROM objetivos
-        WHERE nombre = ?
+        LIMIT 1
     """
     with _get_conn() as conn:
-        row = conn.execute(sql, (nombre,)).fetchone()
+        row = conn.execute(sql).fetchone()
 
     if row is None:
-        return {"error": f"Objetivo '{nombre}' no encontrado."}
+        return {"error": "No hay ningún objetivo definido todavía."}
 
     hoy = date.today()
     fecha_limite = date.fromisoformat(row["fecha_limite"])

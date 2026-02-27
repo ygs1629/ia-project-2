@@ -198,6 +198,53 @@ function _renderizarTablaCategoriasConBarras(etiquetas, valores, colores) {
 
 // rellena la card del objetivo con los datos de get_progreso_objetivo
 function renderizarObjetivo(obj) {
+  // Si el contenedor fue sobreescrito por el estado "sin objetivo" (404),
+  // restaurar la estructura completa antes de rellenar datos.
+  const cont = document.getElementById("objetivosContainer");
+  if (cont && !document.getElementById("objetivoNombre")) {
+    cont.innerHTML = `
+      <div class="panel-header">
+        <h2 class="panel-title">Objetivo de ahorro</h2>
+        <div style="display:flex;align-items:center;gap:.5rem;">
+          <span class="panel-badge" id="objetivoPorcentaje">—</span>
+          <button class="btn-editar-objetivo" onclick="abrirModalObjetivo()" title="Editar objetivo" aria-label="Editar objetivo de ahorro">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            Editar
+          </button>
+        </div>
+      </div>
+      <div class="objetivo-body">
+        <div class="objetivo-nombre" id="objetivoNombre"></div>
+        <div class="objetivo-barra-wrap" aria-label="Progreso del objetivo">
+          <div class="objetivo-barra-track">
+            <div class="objetivo-barra-fill" id="objetivoBarra" style="width:0%"></div>
+          </div>
+        </div>
+        <div class="objetivo-metricas">
+          <div class="objetivo-metrica">
+            <span class="objetivo-metrica-label">Ahorrado</span>
+            <span class="objetivo-metrica-valor color-green" id="objetivoActual">—</span>
+          </div>
+          <div class="objetivo-metrica">
+            <span class="objetivo-metrica-label">Objetivo</span>
+            <span class="objetivo-metrica-valor" id="objetivoTotal">—</span>
+          </div>
+          <div class="objetivo-metrica">
+            <span class="objetivo-metrica-label">Falta</span>
+            <span class="objetivo-metrica-valor color-amber" id="objetivoFalta">—</span>
+          </div>
+          <div class="objetivo-metrica">
+            <span class="objetivo-metrica-label">Plazo</span>
+            <span class="objetivo-metrica-valor" id="objetivoDias">—</span>
+          </div>
+        </div>
+        <div class="objetivo-fecha">
+          📅 Fecha límite: <span id="objetivoFecha">—</span>
+        </div>
+      </div>
+    `;
+  }
+
   const elNombre = document.getElementById("objetivoNombre");
   if (elNombre) elNombre.textContent = obj.nombre;
 
