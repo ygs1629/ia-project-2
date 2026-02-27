@@ -214,7 +214,7 @@ def get_objetivo():
 
     return _objetivo_dict(row, hoy)
 
-# POST /api/objetivos  — crear o actualizar 
+# POST /api/objetivo
 
 @router.post("/objetivos", status_code=201)
 def post_objetivo(objetivo: ObjetivoIn):
