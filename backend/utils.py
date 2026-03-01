@@ -3,6 +3,7 @@ utils.py — Funciones compartidas entre agent/tools.py y api/routes.py.
 """
 
 from datetime import date, timedelta
+from dateutil.relativedelta import relativedelta
 
 
 PERIODOS_VALIDOS = {"semana", "mes", "trimestre", "semestre", "anual"}
@@ -10,10 +11,17 @@ PERIODOS_VALIDOS = {"semana", "mes", "trimestre", "semestre", "anual"}
 
 def fecha_inicio(periodo: str) -> date:
     """
-    Devuelve la fecha de inicio del periodo relativa a hoy.
+    Devuelve la fecha de inicio del periodo como ventana deslizante
+    hacia atrás desde hoy (rolling window).
 
-    Parámetros:
-        periodo: 'semana' | 'mes' | 'trimestre' | 'semestre' | 'anual'
+    Esto garantiza que cada periodo siempre muestre datos distintos
+    y que nunca queden vacíos por estar al inicio del mes/año.
+
+        semana    → últimos 7 días
+        mes       → últimos 30 días
+        trimestre → últimos 3 meses
+        semestre  → últimos 6 meses
+        anual     → últimos 12 meses
 
     Lanza ValueError si el periodo no es válido.
     """
@@ -26,14 +34,12 @@ def fecha_inicio(periodo: str) -> date:
     hoy = date.today()
 
     if periodo == "semana":
-        return hoy - timedelta(days=hoy.weekday())
+        return hoy - timedelta(weeks=1)
     elif periodo == "mes":
-        return hoy.replace(day=1)
+        return hoy - relativedelta(months=1)
     elif periodo == "trimestre":
-        mes = ((hoy.month - 1) // 3) * 3 + 1
-        return hoy.replace(month=mes, day=1)
+        return hoy - relativedelta(months=3)
     elif periodo == "semestre":
-        mes = 1 if hoy.month <= 6 else 7
-        return hoy.replace(month=mes, day=1)
-    else:  # anual
-        return hoy.replace(month=1, day=1)
+        return hoy - relativedelta(months=6)
+    else:  
+        return hoy - relativedelta(years=1)
