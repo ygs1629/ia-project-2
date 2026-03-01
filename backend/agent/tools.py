@@ -1,14 +1,16 @@
 """
 tools.py — Herramientas que el agente LangGraph puede invocar.
-Todas realizan únicamente consultas SELECT sobre finanzas.db.
-El LLM NUNCA calcula: recibe los números ya calculados y solo redacta.
 """
 
 import sqlite3
-from datetime import date, timedelta
+from datetime import date
 from pathlib import Path
 
+from dateutil.relativedelta import relativedelta
+
 from langchain_core.tools import tool
+
+from utils import fecha_inicio
 
 DB_PATH = Path(__file__).parent.parent / "data" / "finanzas.db"
 
@@ -26,31 +28,17 @@ def get_gastos_periodo(periodo: str, anio: int = None) -> dict:
 
     Parámetros:
         periodo: 'semana' | 'mes' | 'trimestre' | 'semestre' | 'anual'
-        anio:    Año de referencia (por defecto el año actual).
+        anio:    Año de referencia (reservado para uso futuro).
 
     Devuelve un dict {categoria: importe_total} con importes positivos
     (ya invertidos para facilitar la lectura).
     """
-    if anio is None:
-        anio = date.today().year
+    try:
+        inicio = fecha_inicio(periodo)
+    except ValueError as e:
+        return {"error": str(e)}
 
     hoy = date.today()
-
-    if periodo == "semana":
-        inicio = hoy - timedelta(days=hoy.weekday())  
-    elif periodo == "mes":
-        inicio = hoy.replace(day=1)
-    elif periodo == "trimestre":
-        mes_inicio = ((hoy.month - 1) // 3) * 3 + 1
-        inicio = hoy.replace(month=mes_inicio, day=1)
-    elif periodo == "semestre":
-        mes_inicio = 1 if hoy.month <= 6 else 7
-        inicio = hoy.replace(month=mes_inicio, day=1)
-    elif periodo == "anual":
-        inicio = hoy.replace(month=1, day=1)
-    else:
-        return {"error": f"Periodo desconocido: {periodo}"}
-
     sql = """
         SELECT categoria, ROUND(ABS(SUM(importe)), 2) AS total
         FROM transacciones
@@ -77,10 +65,8 @@ def get_evolucion_categoria(categoria: str, meses: int = 6) -> list[dict]:
     ordenada de más antiguo a más reciente.
     """
     hoy = date.today()
-    mes_offset = hoy.month - meses
-    anio_inicio = hoy.year + (mes_offset - 1) // 12
-    mes_inicio = ((mes_offset - 1) % 12) + 1
-    inicio = date(anio_inicio, mes_inicio, 1)
+    
+    inicio = date(hoy.year, hoy.month, 1) - relativedelta(months=meses)
 
     sql = """
         SELECT strftime('%Y-%m', fecha) AS mes,
@@ -108,23 +94,12 @@ def get_resumen_ingresos_vs_gastos(periodo: str) -> dict:
 
     Devuelve {"ingresos": x, "gastos": y, "ahorro": z}
     """
+    try:
+        inicio = fecha_inicio(periodo)
+    except ValueError as e:
+        return {"error": str(e)}
+
     hoy = date.today()
-
-    if periodo == "semana":
-        inicio = hoy - timedelta(days=hoy.weekday())
-    elif periodo == "mes":
-        inicio = hoy.replace(day=1)
-    elif periodo == "trimestre":
-        mes_inicio = ((hoy.month - 1) // 3) * 3 + 1
-        inicio = hoy.replace(month=mes_inicio, day=1)
-    elif periodo == "semestre":
-        mes_inicio = 1 if hoy.month <= 6 else 7
-        inicio = hoy.replace(month=mes_inicio, day=1)
-    elif periodo == "anual":
-        inicio = hoy.replace(month=1, day=1)
-    else:
-        return {"error": f"Periodo desconocido: {periodo}"}
-
     sql = """
         SELECT
             ROUND(SUM(CASE WHEN importe > 0 THEN importe ELSE 0 END), 2) AS ingresos,
@@ -144,36 +119,37 @@ def get_resumen_ingresos_vs_gastos(periodo: str) -> dict:
     }
 
 @tool
-def get_progreso_objetivo(nombre: str) -> dict:
+def get_progreso_objetivo() -> dict:
     """
-    Devuelve el estado actual de un objetivo de ahorro.
-
-    Parámetros:
-        nombre: nombre del objetivo tal como fue creado (ej. 'Vacaciones de verano')
+    Devuelve el estado actual del objetivo de ahorro activo.
+    Solo existe un objetivo a la vez.
 
     Devuelve un dict con:
         - nombre, importe_objetivo, importe_actual, fecha_limite
         - falta: cuánto queda por ahorrar
         - dias_restantes: días hasta la fecha límite
         - porcentaje: % completado
-        - en_plazo: bool (True si la proyección lineal es suficiente)
     """
     sql = """
         SELECT nombre, importe_objetivo, importe_actual, fecha_limite
         FROM objetivos
-        WHERE nombre = ?
+        LIMIT 1
     """
     with _get_conn() as conn:
-        row = conn.execute(sql, (nombre,)).fetchone()
+        row = conn.execute(sql).fetchone()
 
     if row is None:
-        return {"error": f"Objetivo '{nombre}' no encontrado."}
+        return {"error": "No hay ningún objetivo definido todavía."}
 
     hoy = date.today()
     fecha_limite = date.fromisoformat(row["fecha_limite"])
     dias_restantes = (fecha_limite - hoy).days
     falta = round(row["importe_objetivo"] - row["importe_actual"], 2)
-    porcentaje = round(row["importe_actual"] / row["importe_objetivo"] * 100, 1) if row["importe_objetivo"] else 0
+    porcentaje = (
+        round(row["importe_actual"] / row["importe_objetivo"] * 100, 1)
+        if row["importe_objetivo"]
+        else 0
+    )
 
     return {
         "nombre": row["nombre"],
@@ -196,23 +172,12 @@ def get_top_gastos(periodo: str, n: int = 5) -> list[dict]:
 
     Devuelve lista de dicts [{"concepto": ..., "importe": ..., "fecha": ..., "categoria": ...}]
     """
+    try:
+        inicio = fecha_inicio(periodo)
+    except ValueError as e:
+        return [{"error": str(e)}]
+
     hoy = date.today()
-
-    if periodo == "semana":
-        inicio = hoy - timedelta(days=hoy.weekday())
-    elif periodo == "mes":
-        inicio = hoy.replace(day=1)
-    elif periodo == "trimestre":
-        mes_inicio = ((hoy.month - 1) // 3) * 3 + 1
-        inicio = hoy.replace(month=mes_inicio, day=1)
-    elif periodo == "semestre":
-        mes_inicio = 1 if hoy.month <= 6 else 7
-        inicio = hoy.replace(month=mes_inicio, day=1)
-    elif periodo == "anual":
-        inicio = hoy.replace(month=1, day=1)
-    else:
-        return [{"error": f"Periodo desconocido: {periodo}"}]
-
     sql = """
         SELECT concepto, ROUND(ABS(importe), 2) AS importe, fecha, categoria
         FROM transacciones

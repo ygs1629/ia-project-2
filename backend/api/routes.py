@@ -2,67 +2,38 @@
 routes.py — Endpoints de la API del asistente financiero.
 
 Endpoints que consume el frontend (api.js):
-    GET  /api/dashboard                     → gastos_por_categoria + alerta
+    GET  /api/dashboard                     → gastos_por_categoria
     GET  /api/resumen?periodo=X             → { ingresos, gastos, ahorro }
     GET  /api/top-gastos?periodo=X&n=5      → lista de los N gastos más altos
-    GET  /api/objetivo                      → primer objetivo (el frontend solo renderiza uno)
+    GET  /api/objetivo                      → objetivo de ahorro
     POST /api/chat                          → mensaje al agente LangGraph
-    POST /api/objetivos                     → crear o actualizar un objetivo
+    POST /api/objetivos                     → crear o actualizar el objetivo
 """
 
 import sqlite3
-from datetime import date, timedelta
+from datetime import date
 from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
-from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.messages import HumanMessage
 from pydantic import BaseModel
 
-from core.graph import build_graph
-
-# Importaciones opcionales (para predicciones y alertas que aún no están desarrolladas)
-try:
-    from core.predicciones import calcular_prediccion_mes
-    _predicciones_disponibles = True
-except (ImportError, AttributeError):
-    _predicciones_disponibles = False
-
-try:
-    from core.alertas import generar_alerta
-    _alertas_disponibles = True
-except (ImportError, AttributeError):
-    _alertas_disponibles = False
+from agent.graph import build_graph
+from utils import fecha_inicio, PERIODOS_VALIDOS
 
 DB_PATH = Path(__file__).parent.parent / "data" / "finanzas.db"
-PERIODOS_VALIDOS = {"semana", "mes", "trimestre", "semestre", "anual"}
+
+MAX_MENSAJE_CHARS = 4_000     
 
 router = APIRouter(prefix="/api")
-
-# Funciones útiles internas
 
 def _get_conn() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
-def _fecha_inicio(periodo: str) -> date:
-    """Devuelve la fecha de inicio del periodo relativa a hoy."""
-    hoy = date.today()
-    if periodo == "semana":
-        return hoy - timedelta(days=hoy.weekday())
-    elif periodo == "mes":
-        return hoy.replace(day=1)
-    elif periodo == "trimestre":
-        mes = ((hoy.month - 1) // 3) * 3 + 1
-        return hoy.replace(month=mes, day=1)
-    elif periodo == "semestre":
-        mes = 1 if hoy.month <= 6 else 7
-        return hoy.replace(month=mes, day=1)
-    else:  # anual
-        return hoy.replace(month=1, day=1)
-
-def _validar_periodo(periodo: str):
+def _validar_periodo(periodo: str) -> None:
     if periodo not in PERIODOS_VALIDOS:
         raise HTTPException(
             status_code=400,
@@ -86,7 +57,8 @@ def _objetivo_dict(row, hoy: date) -> dict:
     falta = round(row["importe_objetivo"] - row["importe_actual"], 2)
     porcentaje = (
         round(row["importe_actual"] / row["importe_objetivo"] * 100, 1)
-        if row["importe_objetivo"] else 0
+        if row["importe_objetivo"]
+        else 0
     )
     dias_restantes = (date.fromisoformat(row["fecha_limite"]) - hoy).days
     return {
@@ -100,31 +72,28 @@ def _objetivo_dict(row, hoy: date) -> dict:
         "dias_restantes":   dias_restantes,
     }
 
-# Modelos Pydantic
-
 class MensajeChat(BaseModel):
     mensaje: str
-    historial: list[dict] = []  
-    user_id: str = ""           
+    user_id: str
 
 class ObjetivoIn(BaseModel):
     nombre: str
     importe_objetivo: float
     importe_actual: float = 0.0
-    fecha_limite: str  # ISO: "2025-12-31"
+    fecha_limite: str  
 
 # GET /api/dashboard
 
 @router.get("/dashboard")
 def get_dashboard(periodo: str = Query(default="mes")):
     """
-    Devuelve gastos por categoría del periodo y el estado de alerta.
-    El frontend usa este endpoint SOLO para el gráfico donut y la alerta.
+    Devuelve gastos por categoría del periodo.
+    El frontend usa este endpoint SOLO para el gráfico donut.
     El balance y el top de gastos tienen endpoints propios.
     """
     _validar_periodo(periodo)
     hoy = date.today()
-    inicio = _fecha_inicio(periodo)
+    inicio = fecha_inicio(periodo)
 
     with _get_conn() as conn:
         rows = conn.execute(
@@ -139,22 +108,9 @@ def get_dashboard(periodo: str = Query(default="mes")):
 
     gastos_por_categoria = {row["categoria"]: row["total"] for row in rows}
 
-    # stub hasta que alertas.py esté implementado
-    alerta = {"activa": False, "mensaje": None}
-    if _alertas_disponibles:
-        try:
-            raw = generar_alerta()
-            alerta = {
-                "activa":  raw.get("alerta", False),
-                "mensaje": raw.get("mensaje"),
-            }
-        except Exception:
-            pass
-
     return {
         "periodo":              periodo,
         "gastos_por_categoria": gastos_por_categoria,
-        "alerta":               alerta,
     }
 
 # GET /api/resumen?periodo=X
@@ -164,7 +120,7 @@ def get_resumen(periodo: str = Query(default="mes")):
     """Balance ingresos vs gastos del periodo."""
     _validar_periodo(periodo)
     hoy = date.today()
-    inicio = _fecha_inicio(periodo)
+    inicio = fecha_inicio(periodo)
 
     with _get_conn() as conn:
         row = conn.execute(
@@ -196,7 +152,7 @@ def get_top_gastos(
     """Los N conceptos individuales más caros del periodo."""
     _validar_periodo(periodo)
     hoy = date.today()
-    inicio = _fecha_inicio(periodo)
+    inicio = fecha_inicio(periodo)
 
     with _get_conn() as conn:
         rows = conn.execute(
@@ -220,7 +176,7 @@ def get_top_gastos(
         for row in rows
     ]
 
-# GET /api/objetivo  (singular)
+# GET /api/objetivo
 
 @router.get("/objetivo")
 def get_objetivo():
@@ -236,11 +192,11 @@ def get_objetivo():
 
     return _objetivo_dict(row, hoy)
 
-# POST /api/objetivos  — crear o actualizar (todavía no implementado en el frontend)
+# POST /api/objetivos
 
 @router.post("/objetivos", status_code=201)
 def post_objetivo(objetivo: ObjetivoIn):
-    """Crea o actualiza un objetivo (upsert por nombre)."""
+    """Reemplaza el único objetivo de ahorro. Siempre hay como máximo 1."""
     try:
         date.fromisoformat(objetivo.fecha_limite)
     except ValueError:
@@ -251,21 +207,17 @@ def post_objetivo(objetivo: ObjetivoIn):
 
     hoy = date.today()
     with _get_conn() as conn:
+        conn.execute("DELETE FROM objetivos")
         conn.execute(
             """
-            INSERT INTO objetivos (nombre, importe_objetivo, importe_actual, fecha_limite)
-            VALUES (:nombre, :importe_objetivo, :importe_actual, :fecha_limite)
-            ON CONFLICT(nombre) DO UPDATE SET
-                importe_objetivo = excluded.importe_objetivo,
-                importe_actual   = excluded.importe_actual,
-                fecha_limite     = excluded.fecha_limite
+            INSERT INTO objetivos (id, nombre, importe_objetivo, importe_actual, fecha_limite)
+            VALUES (1, :nombre, :importe_objetivo, :importe_actual, :fecha_limite)
             """,
             objetivo.model_dump(),
         )
         conn.commit()
         row = conn.execute(
-            "SELECT id, nombre, importe_objetivo, importe_actual, fecha_limite FROM objetivos WHERE nombre = ?",
-            (objetivo.nombre,),
+            "SELECT id, nombre, importe_objetivo, importe_actual, fecha_limite FROM objetivos WHERE id = 1",
         ).fetchone()
 
     return _objetivo_dict(row, hoy)
@@ -278,24 +230,21 @@ def post_chat(
     api_key: str = Depends(_extract_api_key),
 ):
     """
-    Recibe el mensaje del usuario y el historial en formato {rol, texto}
-    (el formato que usa app.js), lo convierte a mensajes LangChain,
-    invoca el grafo y devuelve { respuesta, tool_usada }.
+    Recibe el mensaje del usuario e invoca el grafo LangGraph.
+    El historial de conversación lo gestiona LangGraph automáticamente
+    mediante MemorySaver, usando user_id como thread_id.
     """
-    mensajes = []
-    for entry in body.historial:
-        rol   = entry.get("rol", "usuario")
-        texto = entry.get("texto", "")
-        if rol == "usuario":
-            mensajes.append(HumanMessage(content=texto))
-        elif rol == "agente":
-            mensajes.append(AIMessage(content=texto))
+    if len(body.mensaje) > MAX_MENSAJE_CHARS:
+        raise HTTPException(
+            status_code=422,
+            detail=f"El mensaje supera el límite de {MAX_MENSAJE_CHARS} caracteres.",
+        )
 
-    mensajes.append(HumanMessage(content=body.mensaje))
+    config = {"configurable": {"thread_id": body.user_id}}
 
     try:
         graph = build_graph(api_key)
-        result = graph.invoke({"messages": mensajes})
+        result = graph.invoke({"messages": [HumanMessage(content=body.mensaje)]}, config)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Error del agente: {str(exc)}")
 

@@ -1,44 +1,63 @@
 """
 graph.py — Grafo LangGraph del asistente financiero.
-Arquitectura:
-    [usuario] → [nodo LLM] → ¿tool? → SÍ → [ejecutar tool] → [nodo LLM] → [respuesta]
-                                     → NO → [respuesta]
-La API Key se recibe como parámetro en cada invocación,
-NUNCA se hardcodea ni se guarda en el servidor.
 """
 
+from datetime import date
+
+from langchain_core.messages import SystemMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
 
 from .state import AgentState
 from .tools import ALL_TOOLS
 
-# Nombres de nodos para claridad
+memory = MemorySaver()
+
+_graph_cache: dict = {}
+
+def _build_system_prompt() -> str:
+    hoy = date.today()
+    fecha_str = f"{hoy.day} de {hoy.strftime('%B')} de {hoy.year}"  
+    dia_semana = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"][hoy.weekday()]
+    return (
+        f"Eres un asistente financiero personal. "
+        f"Hoy es {dia_semana}, {fecha_str}. "
+        f"Cuando el usuario pregunte por la fecha actual, el día, el mes o el año, responde directamente con este dato sin usar ninguna herramienta. "
+        f"Para consultar datos financieros usa siempre las herramientas disponibles; nunca inventes cifras. "
+        f"Responde siempre en español, de forma concisa y empática."
+    )
+
 NODE_LLM = "llm"
 NODE_TOOLS = "tools"
-
 
 def build_graph(api_key: str) -> "CompiledGraph":
     """
     Construye y compila el grafo LangGraph.
+    El grafo se cachea por api_key, por lo que solo se compila una vez
+    por clave y se reutiliza en las siguientes peticiones.
 
     Parámetros:
         api_key: API Key de Google AI (Gemini) proporcionada por el usuario en cada petición.
 
     Devuelve el grafo compilado listo para invocar.
     """
+    if api_key in _graph_cache:
+        return _graph_cache[api_key]
+
     llm = ChatGoogleGenerativeAI(
         model="gemini-2.0-flash",
         temperature=0.3,
         google_api_key=api_key,
     ).bind_tools(ALL_TOOLS)
 
+    system_prompt = SystemMessage(content=_build_system_prompt())
+
     def llm_node(state: AgentState) -> dict:
-        response = llm.invoke(state["messages"])
+        response = llm.invoke([system_prompt] + state["messages"])
         return {"messages": [response]}
 
-    # edge condicional: ¿el LLM quiere ejecutar una tool?
     def should_use_tool(state: AgentState) -> str:
         last_message = state["messages"][-1]
         if hasattr(last_message, "tool_calls") and last_message.tool_calls:
@@ -58,12 +77,13 @@ def build_graph(api_key: str) -> "CompiledGraph":
         {NODE_TOOLS: NODE_TOOLS, END: END},
     )
 
-    # después de ejecutar tools, volvemos al LLM para que redacte la respuesta final
     graph_builder.add_edge(NODE_TOOLS, NODE_LLM)
 
-    return graph_builder.compile()
+    compiled = graph_builder.compile(checkpointer=memory)
+    _graph_cache[api_key] = compiled
+    return compiled
 
-# para probar que funciona el agente
+# para probar que funciona el agente en terminal
 if __name__ == "__main__":
     import os
     import sys
@@ -77,11 +97,11 @@ if __name__ == "__main__":
     graph = build_graph(api_key)
 
     preguntas = [
-        "¿Cuánto he gastado este trimestre por categoría?",                      # get_gastos_periodo
-        "¿Cómo ha evolucionado mi gasto en Supermercado los últimos 6 meses?",   # get_evolucion_categoria
-        "Dame el balance de ingresos y gastos del último semestre.",             # get_resumen_ingresos_vs_gastos
-        "¿Cómo voy con mi objetivo de Vacaciones de verano?",                    # get_progreso_objetivo
-        "¿Cuáles han sido mis 5 gastos más altos este año?",                     # get_top_gastos
+        "¿Cuánto he gastado este trimestre por categoría?",                      
+        "¿Cómo ha evolucionado mi gasto en Supermercado los últimos 6 meses?",   
+        "Dame el balance de ingresos y gastos del último semestre.",             
+        "¿Cómo voy con mi objetivo de Vacaciones de verano?",                    
+        "¿Cuáles han sido mis 5 gastos más altos este año?",                     
     ]
 
     for pregunta in preguntas:

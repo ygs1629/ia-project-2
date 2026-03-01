@@ -228,3 +228,4 @@ uvicorn app:app --reload
 ## Ilustración del transfomer financiero usado (TimesGPT)
 
 ![alt text](image.png)
+# Sentinel Finance Engine

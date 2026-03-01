@@ -1,45 +1,29 @@
 // app.js — Capa de presentación del dashboard
-//
-// Módulos:
-//    gestionarAlerta(alerta)              → muestra/oculta el banner de alerta
-//    renderizarResumen(resumen)           → tarjetas ingresos / gastos / ahorro
-//    renderizarGrafico(gastosPorCat)      → donut chart con Chart.js
-//    renderizarTopGastos(lista)           → panel Top 5 gastos
-//    renderizarObjetivo(obj)              → card de progreso del objetivo
-//    cambiarPeriodo(periodo)              → actualiza dashboard al cambiar filtro
-//    enviarMensaje()                      → envía mensaje al chat y renderiza respuesta
-//    inicializarDashboard()              → punto de entrada, lanza todos los fetch
-//
-// BASE_URL apunta a localhost:8000 en desarrollo
-// y a HuggingFace Spaces en producción.
 
 const BASE_URL = "http://localhost:8000";
 
-// período seleccionado en el filtro, "mes" por defecto
+// período seleccionado en el filtro y mes por defecto
 let PERIODO_ACTIVO = "mes";
 
 // referencia al gráfico para poder destruirlo antes de redibujar
 let graficoDonut = null;
 
-// historial del chat — se manda al backend en cada mensaje para que el agente tenga contexto
-const MAX_HISTORIAL = 10;
-let historialChat = [];
+const COLORES_CATEGORIAS = {
+  Vivienda:      "#0891B2",
+  Supermercado:  "#0D9488",
+  Suministros:   "#7C3AED",
+  Ocio:          "#D97706",
+  Restaurantes:  "#059669",
+  Transporte:    "#DC2626",
+  Salud:         "#DB2777",
+  Suscripciones: "#EA580C",
+  Otros:         "#6B7280",
+};
 
-// un color por categoría, mismo orden que devuelve el backend
-const COLORES_CATEGORIAS = [
-  "#0891B2", // Vivienda
-  "#0D9488", // Supermercado
-  "#7C3AED", // Suministros
-  "#D97706", // Ocio
-  "#059669", // Restaurantes
-  "#DC2626", // Transporte
-  "#DB2777", // Salud
-  "#EA580C", // Suscripciones
-];
+const COLORES_HOVER = Object.fromEntries(
+  Object.entries(COLORES_CATEGORIAS).map(([k, v]) => [k, v + "CC"])
+);
 
-const COLORES_HOVER = COLORES_CATEGORIAS.map((c) => c + "CC");
-
-// formatea cualquier número como "1.250,50 €"
 function formatearEuro(valor) {
   return new Intl.NumberFormat("es-ES", {
     style: "currency",
@@ -47,21 +31,6 @@ function formatearEuro(valor) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(valor);
-}
-
-// muestra u oculta el banner superior según lo que diga el backend
-function gestionarAlerta(alerta) {
-  const banner = document.getElementById("bannerAlerta");
-  if (!banner) return;
-
-  if (alerta.activa) {
-    banner.textContent = alerta.mensaje;
-    banner.style.display = "block";
-    banner.setAttribute("role", "alert");
-  } else {
-    banner.style.display = "none";
-    banner.removeAttribute("role");
-  }
 }
 
 // rellena las tres tarjetas de resumen 
@@ -92,8 +61,8 @@ function renderizarGrafico(gastosPorCategoria) {
 
   const etiquetas = Object.keys(gastosPorCategoria);
   const valores   = Object.values(gastosPorCategoria);
-  const cfondo    = etiquetas.map((_, i) => COLORES_CATEGORIAS[i % COLORES_CATEGORIAS.length]);
-  const chover    = etiquetas.map((_, i) => COLORES_HOVER[i % COLORES_HOVER.length]);
+  const cfondo    = etiquetas.map((cat) => COLORES_CATEGORIAS[cat] ?? "#6B7280");
+  const chover    = etiquetas.map((cat) => COLORES_HOVER[cat]      ?? "#6B7280CC");
 
   const total = valores.reduce((a, b) => a + b, 0);
 
@@ -198,14 +167,65 @@ function _renderizarTablaCategoriasConBarras(etiquetas, valores, colores) {
 
 // rellena la card del objetivo con los datos de get_progreso_objetivo
 function renderizarObjetivo(obj) {
+  const cont = document.getElementById("objetivosContainer");
+  if (cont && !document.getElementById("objetivoNombre")) {
+    cont.innerHTML = `
+      <div class="panel-header">
+        <h2 class="panel-title">Objetivo de ahorro</h2>
+        <div style="display:flex;align-items:center;gap:.5rem;">
+          <span class="panel-badge" id="objetivoPorcentaje">—</span>
+          <button class="btn-editar-objetivo" onclick="abrirModalObjetivo()" title="Editar objetivo" aria-label="Editar objetivo de ahorro">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            Editar
+          </button>
+        </div>
+      </div>
+      <div class="objetivo-body">
+        <div class="objetivo-nombre" id="objetivoNombre"></div>
+        <div class="objetivo-barra-wrap" aria-label="Progreso del objetivo">
+          <div class="objetivo-barra-track">
+            <div class="objetivo-barra-fill" id="objetivoBarra" style="width:0%"></div>
+          </div>
+        </div>
+        <div class="objetivo-metricas">
+          <div class="objetivo-metrica">
+            <span class="objetivo-metrica-label">Ahorrado</span>
+            <span class="objetivo-metrica-valor color-green" id="objetivoActual">—</span>
+          </div>
+          <div class="objetivo-metrica">
+            <span class="objetivo-metrica-label">Objetivo</span>
+            <span class="objetivo-metrica-valor" id="objetivoTotal">—</span>
+          </div>
+          <div class="objetivo-metrica">
+            <span class="objetivo-metrica-label">Falta</span>
+            <span class="objetivo-metrica-valor color-amber" id="objetivoFalta">—</span>
+          </div>
+          <div class="objetivo-metrica">
+            <span class="objetivo-metrica-label">Plazo</span>
+            <span class="objetivo-metrica-valor" id="objetivoDias">—</span>
+          </div>
+        </div>
+        <div class="objetivo-fecha">
+          📅 Fecha límite: <span id="objetivoFecha">—</span>
+        </div>
+      </div>
+    `;
+  }
+
   const elNombre = document.getElementById("objetivoNombre");
   if (elNombre) elNombre.textContent = obj.nombre;
 
   const elActual = document.getElementById("objetivoActual");
-  if (elActual) elActual.textContent = formatearEuro(obj.importe_actual);
+  if (elActual) {
+    elActual.textContent = formatearEuro(obj.importe_actual);
+    elActual.dataset.raw = obj.importe_actual;
+  }
 
   const elTotal = document.getElementById("objetivoTotal");
-  if (elTotal) elTotal.textContent = formatearEuro(obj.importe_objetivo);
+  if (elTotal) {
+    elTotal.textContent = formatearEuro(obj.importe_objetivo);
+    elTotal.dataset.raw = obj.importe_objetivo;
+  }
 
   const elBarra = document.getElementById("objetivoBarra");
   if (elBarra) {
@@ -228,6 +248,7 @@ function renderizarObjetivo(obj) {
 
   const elFecha = document.getElementById("objetivoFecha");
   if (elFecha) {
+    elFecha.dataset.raw = obj.fecha_limite;
     elFecha.textContent = new Date(obj.fecha_limite).toLocaleDateString("es-ES", {
       day: "numeric", month: "long", year: "numeric",
     });
@@ -238,7 +259,6 @@ function renderizarObjetivo(obj) {
 }
 
 // se llama al hacer clic en los botones del filtro
-// re-fetcha resumen + donut + top en paralelo para no encadenar peticiones
 async function cambiarPeriodo(nuevoPeriodo) {
   if (!PERIODOS_VALIDOS.includes(nuevoPeriodo)) {
     console.error(`SFE: período inválido "${nuevoPeriodo}"`);
@@ -264,7 +284,7 @@ async function cambiarPeriodo(nuevoPeriodo) {
   try {
     const [resumen, datosDashboard, topGastos] = await Promise.all([
       fetchResumen(nuevoPeriodo),
-      fetchDashboardData(),
+      fetchDashboardData(nuevoPeriodo),
       fetchTopGastos(nuevoPeriodo, 5),
     ]);
 
@@ -282,7 +302,7 @@ async function cambiarPeriodo(nuevoPeriodo) {
   }
 }
 
-// lista los N gastos más altos del período — el orden lo decide el backend
+// lista los N gastos más altos del período
 function renderizarTopGastos(lista) {
   const contenedor = document.getElementById("listaTopGastos");
   if (!contenedor) { console.warn("SFE: falta #listaTopGastos"); return; }
@@ -294,20 +314,8 @@ function renderizarTopGastos(lista) {
 
   contenedor.innerHTML = "";
 
-  const COLORES_CAT = {
-    Vivienda:      "#0891B2",
-    Supermercado:  "#0D9488",
-    Suministros:   "#7C3AED",
-    Ocio:          "#D97706",
-    Restaurantes:  "#059669",
-    Transporte:    "#DC2626",
-    Salud:         "#DB2777",
-    Suscripciones: "#EA580C",
-    Otros:         "#6B7280",
-  };
-
   lista.forEach((gasto, idx) => {
-    const color = COLORES_CAT[gasto.categoria] || "#6B7280";
+    const color = COLORES_CATEGORIAS[gasto.categoria] ?? "#6B7280";
     const fechaFormateada = new Date(gasto.fecha).toLocaleDateString("es-ES", {
       day: "numeric", month: "short",
     });
@@ -352,7 +360,8 @@ function _agregarBurbuja(texto, tipo) {
 }
 
 // indicador visual de qué tool está ejecutando el agente en este momento
-function _agregarIndicadorTool(toolNombre) {
+// si toolNombre es null (o desconocido) muestra el texto genérico
+function _agregarIndicadorTool(toolNombre = null) {
   const area = document.getElementById("chatMensajes");
   if (!area) return null;
 
@@ -367,9 +376,11 @@ function _agregarIndicadorTool(toolNombre) {
     "get_top_gastos":                 "Buscando tus mayores gastos…",
   };
 
+  const texto = (toolNombre && nombres[toolNombre]) ? nombres[toolNombre] : "Consultando base de datos…";
+
   indicador.innerHTML = `
     <span class="tool-icon">⚙</span>
-    <span class="tool-texto">${nombres[toolNombre] || "Consultando base de datos…"}</span>
+    <span class="tool-texto">${texto}</span>
   `;
 
   area.appendChild(indicador);
@@ -391,19 +402,14 @@ async function enviarMensaje() {
 
   _agregarBurbuja(texto, "usuario");
 
-  historialChat.push({ rol: "usuario", texto });
-  if (historialChat.length > MAX_HISTORIAL * 2) {
-    historialChat = historialChat.slice(-MAX_HISTORIAL * 2);
-  }
-
   const burbujaEspera = _agregarBurbuja("", "agente");
 
-  // mostramos el indicador de tool antes de saber cuál usará — se actualiza al responder
-  const indicadorDB = _agregarIndicadorTool("get_gastos_periodo");
+  // mostramos el indicador genérico mientras esperamos saber qué tool usará el agente
+  const indicadorDB = _agregarIndicadorTool(null);
   if (indicadorDB) indicadorDB.classList.add("chat-tool-pending");
 
   try {
-    const data = await enviarMensajeChat(texto, historialChat);
+    const data = await enviarMensajeChat(texto);
 
     if (indicadorDB) {
       if (data.tool_usada) {
@@ -429,8 +435,6 @@ async function enviarMensaje() {
       burbujaEspera.innerHTML = "";
       burbujaEspera.textContent = data.respuesta || "El agente no devolvió respuesta.";
     }
-
-    historialChat.push({ rol: "agente", texto: data.respuesta });
 
   } catch (error) {
     console.error("SFE: error en chat →", error.message);
@@ -465,24 +469,90 @@ function verificarApiKey() {
   return true;
 }
 
+// abre el modal de objetivo y rellena los campos si ya hay datos cargados
+function abrirModalObjetivo() {
+  const modal = document.getElementById("modalObjetivo");
+  if (!modal) return;
+
+  // pre-rellenar con los valores actuales si están visibles en la card
+  const nombre  = document.getElementById("objetivoNombre")?.textContent?.trim();
+  const total   = document.getElementById("objetivoTotal")?.dataset?.raw;
+  const actual  = document.getElementById("objetivoActual")?.dataset?.raw;
+  const fecha   = document.getElementById("objetivoFecha")?.dataset?.raw;
+
+  if (nombre && !nombre.includes("skeleton")) {
+    const inNombre = document.getElementById("inputObjetivoNombre");
+    if (inNombre) inNombre.value = nombre;
+  }
+  if (total)  { const el = document.getElementById("inputObjetivoImporte"); if (el) el.value = total; }
+  if (actual) { const el = document.getElementById("inputObjetivoActual");  if (el) el.value = actual; }
+  if (fecha)  { const el = document.getElementById("inputObjetivoFecha");   if (el) el.value = fecha; }
+
+  // fecha mínima = mañana
+  const inFecha = document.getElementById("inputObjetivoFecha");
+  if (inFecha && !inFecha.value) {
+    const manana = new Date();
+    manana.setDate(manana.getDate() + 1);
+    inFecha.min = manana.toISOString().split("T")[0];
+  }
+
+  const errEl = document.getElementById("modalObjetivoError");
+  if (errEl) errEl.style.display = "none";
+
+  modal.style.display = "flex";
+  document.getElementById("inputObjetivoNombre")?.focus();
+}
+
+// valida y envía el formulario del objetivo
+async function guardarObjetivo() {
+  const nombre  = document.getElementById("inputObjetivoNombre")?.value.trim();
+  const importe = parseFloat(document.getElementById("inputObjetivoImporte")?.value);
+  const actual  = parseFloat(document.getElementById("inputObjetivoActual")?.value || "0");
+  const fecha   = document.getElementById("inputObjetivoFecha")?.value;
+  const errEl   = document.getElementById("modalObjetivoError");
+  const btn     = document.querySelector("#modalObjetivo .modal-btn");
+
+  const mostrarError = (msg) => {
+    if (errEl) { errEl.textContent = msg; errEl.style.display = "block"; }
+  };
+
+  if (!nombre)           return mostrarError("⚠ El nombre no puede estar vacío.");
+  if (!importe || importe <= 0) return mostrarError("⚠ El importe debe ser mayor que 0.");
+  if (isNaN(actual) || actual < 0) return mostrarError("⚠ El importe ya ahorrado no puede ser negativo.");
+  if (!fecha)            return mostrarError("⚠ Seleccioná una fecha límite.");
+  if (actual >= importe) return mostrarError("⚠ Lo ya ahorrado no puede superar el objetivo.");
+
+  if (errEl) errEl.style.display = "none";
+  if (btn) { btn.disabled = true; btn.textContent = "Guardando…"; }
+
+  try {
+    const obj = await crearObjetivo(nombre, importe, actual, fecha);
+    document.getElementById("modalObjetivo").style.display = "none";
+    renderizarObjetivo(obj);
+    if (btn) { btn.disabled = false; btn.textContent = "Guardar objetivo"; }
+  } catch (err) {
+    mostrarError(`Error al guardar: ${err.message}`);
+    if (btn) { btn.disabled = false; btn.textContent = "Guardar objetivo"; }
+  }
+}
+
 // las tres peticiones principales van en paralelo para no esperar en cadena
 async function inicializarDashboard() {
   verificarApiKey();
 
   try {
     const [datos, resumen, topGastos] = await Promise.all([
-      fetchDashboardData(),
+      fetchDashboardData(PERIODO_ACTIVO),
       fetchResumen(PERIODO_ACTIVO),
       fetchTopGastos(PERIODO_ACTIVO, 5),
     ]);
 
-    if (!datos?.gastos_por_categoria || !datos?.alerta) {
+    if (!datos?.gastos_por_categoria) {
       throw new Error("La respuesta de /api/dashboard no cumple el contrato JSON.");
     }
 
     renderizarResumen(resumen);
     renderizarGrafico(datos.gastos_por_categoria);
-    gestionarAlerta(datos.alerta);
     renderizarTopGastos(topGastos);
 
     document.querySelectorAll(".filtro-btn").forEach((btn) => {
@@ -493,11 +563,31 @@ async function inicializarDashboard() {
     fetchObjetivo()
       .then((obj) => renderizarObjetivo(obj))
       .catch((err) => {
-        console.warn("SFE: no se pudo cargar el objetivo →", err.message);
-        const cont = document.getElementById("objetivosContainer");
-        if (cont) {
-          cont.innerHTML = `<p style="color:var(--text-muted);font-size:.75rem;padding:1rem 0;">No se pudo cargar el objetivo de ahorro.</p>`;
-          cont.style.opacity = "1";
+        if (err.message.includes("404")) {
+          const cont = document.getElementById("objetivosContainer");
+          if (cont) {
+            cont.innerHTML = `
+              <div class="panel-header">
+                <h2 class="panel-title">Objetivo de ahorro</h2>
+              </div>
+              <div style="padding:1.5rem 0;text-align:center;">
+                <p style="color:var(--text-muted);font-size:.82rem;margin-bottom:1rem;">
+                  Aún no tienes ningún objetivo definido.
+                </p>
+                <button class="modal-btn" style="width:auto;padding:.55rem 1.5rem;font-size:.82rem;" onclick="abrirModalObjetivo()">
+                  + Crear objetivo
+                </button>
+              </div>
+            `;
+            cont.style.opacity = "1";
+          }
+        } else {
+          console.warn("SFE: no se pudo cargar el objetivo →", err.message);
+          const cont = document.getElementById("objetivosContainer");
+          if (cont) {
+            cont.innerHTML = `<p style="color:var(--text-muted);font-size:.75rem;padding:1rem 0;">No se pudo cargar el objetivo de ahorro.</p>`;
+            cont.style.opacity = "1";
+          }
         }
       });
 
@@ -535,6 +625,21 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   }
+
+  // cerrar modal objetivo con Escape
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      const modal = document.getElementById("modalObjetivo");
+      if (modal && modal.style.display !== "none") {
+        modal.style.display = "none";
+      }
+    }
+  });
+
+  // enviar formulario objetivo con Enter en el campo de fecha
+  document.getElementById("inputObjetivoFecha")?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") guardarObjetivo();
+  });
 
   setTimeout(() => {
     _agregarBurbuja(

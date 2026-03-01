@@ -1,5 +1,4 @@
-/* style.css — Sentinel Finance Engine
-   Diseño FinTech oscuro con fuentes DM Serif Display y DM Mono */
+/* style.css — Sentinel Finance Engine */
 
 @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&display=swap');
 
@@ -194,21 +193,6 @@ header {
   font-size: .72rem;
   color: var(--text-muted);
   letter-spacing: .04em;
-}
-
-/* banner de alerta */
-#bannerAlerta {
-  display: none;
-  margin-top: 1.5rem;
-  padding: .9rem 1.25rem;
-  background: rgba(245, 158, 11, 0.08);
-  border: 1px solid rgba(245, 158, 11, 0.35);
-  border-left: 3px solid var(--amber);
-  border-radius: var(--radius-sm);
-  color: #FCD34D;
-  font-size: .8rem;
-  letter-spacing: .03em;
-  animation: fadeUp .4s ease both;
 }
 
 /* título de página */
@@ -815,7 +799,7 @@ header {
   line-height: 1.6;
 }
 
-/* toast de error global — aparece a la izquierda del chat */
+/* toast de error global */
 #errorGlobal {
   display: none;
   position: fixed;
@@ -853,9 +837,10 @@ footer {
   border-top: 1px solid var(--border);
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   flex-wrap: wrap;
   gap: .75rem;
+  text-align: center;
 }
 
 .footer-text {
@@ -1150,4 +1135,44 @@ footer {
 
 .top-gastos-item + .top-gastos-item {
   border-top: 1px solid rgba(30,45,69,.4);
+}
+
+/* modal objetivo (overlay centrado igual que modalApiKey) */
+#modalObjetivo {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 12, 18, 0.88);
+  backdrop-filter: blur(6px);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn .3s ease;
+}
+
+/* botón editar objetivo */
+.btn-editar-objetivo {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .25rem .65rem;
+  background: rgba(8, 145, 178, .1);
+  border: 1px solid rgba(8, 145, 178, .3);
+  border-radius: 4px;
+  color: var(--accent);
+  font-size: .7rem;
+  font-family: 'DM Mono', monospace;
+  cursor: pointer;
+  transition: background .2s, border-color .2s;
+  letter-spacing: .03em;
+}
+.btn-editar-objetivo:hover {
+  background: rgba(8, 145, 178, .2);
+  border-color: rgba(8, 145, 178, .5);
+}
+
+/* modal objetivo campos de fecha y número */
+#modalObjetivo input[type="date"],
+#modalObjetivo input[type="number"] {
+  color-scheme: dark;
 }

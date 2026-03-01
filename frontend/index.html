@@ -40,8 +40,58 @@
     </div>
   </div>
 
-  <!-- banner de alerta — controlado por gestionarAlerta() en app.js -->
-  <div id="bannerAlerta"></div>
+  <!-- modal de Objetivo de Ahorro — se muestra si no hay objetivo definido o al editar -->
+  <div id="modalObjetivo" role="dialog" aria-modal="true" aria-labelledby="modalObjetivoTitulo" style="display:none;">
+    <div class="modal-box">
+      <div class="modal-icon">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      </div>
+      <h2 class="modal-title" id="modalObjetivoTitulo">Objetivo de ahorro</h2>
+      <p class="modal-desc">
+        Define tu meta de ahorro. El sistema proyectará si llegarás a tiempo con tu ritmo actual.
+      </p>
+      <input
+        type="text"
+        id="inputObjetivoNombre"
+        class="modal-input"
+        placeholder="Ej: Vacaciones de verano"
+        autocomplete="off"
+        maxlength="80"
+        aria-label="Nombre del objetivo"
+        style="margin-bottom:.75rem;"
+      />
+      <input
+        type="number"
+        id="inputObjetivoImporte"
+        class="modal-input"
+        placeholder="Importe total (€), ej: 2000"
+        min="1"
+        step="0.01"
+        aria-label="Importe objetivo en euros"
+        style="margin-bottom:.75rem;"
+      />
+      <input
+        type="number"
+        id="inputObjetivoActual"
+        class="modal-input"
+        placeholder="Ya ahorrado (€), ej: 350 — o 0 si empiezas de cero"
+        min="0"
+        step="0.01"
+        aria-label="Importe ya ahorrado"
+        style="margin-bottom:.75rem;"
+      />
+      <input
+        type="date"
+        id="inputObjetivoFecha"
+        class="modal-input"
+        aria-label="Fecha límite"
+        style="margin-bottom:1.25rem;"
+      />
+      <button class="modal-btn" onclick="guardarObjetivo()">Guardar objetivo</button>
+      <p id="modalObjetivoError" style="color:var(--red);font-size:.75rem;margin-top:.75rem;display:none;"></p>
+    </div>
+  </div>
+
 
   <div class="page-wrapper">
 
@@ -62,7 +112,6 @@
     <div class="page-title-block anim-1">
       <div class="page-label">Dashboard · Vista general</div>
       <h1 class="page-title">Resumen financiero</h1>
-      <p class="page-subtitle">Datos en tiempo real desde el motor de análisis. Periodo activo: mes en curso.</p>
     </div>
 
     <!-- los data-periodo deben coincidir con los valores que acepta tools.py -->
@@ -146,17 +195,26 @@
           <h2 class="panel-title">Top 5 gastos</h2>
           <span class="panel-badge" id="badgePeriodo">Mes</span>
         </div>
-        <!-- lista generada por renderizarTopGastos() -->
         <ul class="top-gastos-lista" id="listaTopGastos" aria-label="Los 5 mayores gastos del período">
           <li class="top-gastos-cargando"><span class="spinner"></span> Cargando…</li>
         </ul>
       </div>
 
-      <!-- opacidad 0 hasta que carguen los datos del objetivo -->
       <div class="card-panel" id="objetivosContainer" style="opacity:0;transition:opacity .4s ease;">
         <div class="panel-header">
           <h2 class="panel-title">Objetivo de ahorro</h2>
-          <span class="panel-badge" id="objetivoPorcentaje">—</span>
+          <div style="display:flex;align-items:center;gap:.5rem;">
+            <span class="panel-badge" id="objetivoPorcentaje">—</span>
+            <button
+              class="btn-editar-objetivo"
+              onclick="abrirModalObjetivo()"
+              title="Editar objetivo"
+              aria-label="Editar objetivo de ahorro"
+            >
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              Editar
+            </button>
+          </div>
         </div>
         <div class="objetivo-body">
           <div class="objetivo-nombre" id="objetivoNombre">
@@ -194,8 +252,10 @@
     </div>
 
     <footer>
-      <p class="footer-text"><span>Sentinel Finance Engine</span> · Máster TFM · Persona C — Frontend Layer</p>
-      <p class="footer-text">Motor IA: <span>Gemini 2.0 Flash</span> · Backend: <span>FastAPI / HuggingFace</span> · Frontend: <span>GitHub Pages</span></p>
+      <p class="footer-text">
+        Powered by <span>Gemini 2.0 Flash</span><br>
+        © 2026 <span>Sentinel Finance Engine</span>
+      </p>
     </footer>
 
   </div>
@@ -230,7 +290,6 @@
 
   <div id="errorGlobal" role="alert"></div>
 
-  <!-- api.js debe cargarse antes que app.js -->
   <script src="api.js"></script>
   <script src="app.js"></script>
 
