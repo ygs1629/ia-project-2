@@ -414,8 +414,9 @@ async function enviarMensaje() {
   _agregarBurbuja(texto, "usuario");
 
   historialChat.push({ rol: "usuario", texto });
+
   if (historialChat.length > MAX_HISTORIAL * 2) {
-    historialChat = historialChat.slice(-MAX_HISTORIAL * 2);
+    historialChat = historialChat.slice(2); 
   }
 
   const burbujaEspera = _agregarBurbuja("", "agente");
