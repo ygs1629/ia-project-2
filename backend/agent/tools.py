@@ -6,6 +6,8 @@ import sqlite3
 from datetime import date
 from pathlib import Path
 
+from dateutil.relativedelta import relativedelta
+
 from langchain_core.tools import tool
 
 from utils import fecha_inicio
@@ -17,7 +19,6 @@ def _get_conn() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
-
 
 @tool
 def get_gastos_periodo(periodo: str, anio: int = None) -> dict:
@@ -50,7 +51,6 @@ def get_gastos_periodo(periodo: str, anio: int = None) -> dict:
 
     return {row["categoria"]: row["total"] for row in rows}
 
-
 @tool
 def get_evolucion_categoria(categoria: str, meses: int = 6) -> list[dict]:
     """
@@ -65,10 +65,8 @@ def get_evolucion_categoria(categoria: str, meses: int = 6) -> list[dict]:
     ordenada de más antiguo a más reciente.
     """
     hoy = date.today()
-    mes_offset = hoy.month - meses
-    anio_inicio = hoy.year + (mes_offset - 1) // 12
-    mes_inicio = ((mes_offset - 1) % 12) + 1
-    inicio = date(anio_inicio, mes_inicio, 1)
+    
+    inicio = date(hoy.year, hoy.month, 1) - relativedelta(months=meses)
 
     sql = """
         SELECT strftime('%Y-%m', fecha) AS mes,
@@ -84,7 +82,6 @@ def get_evolucion_categoria(categoria: str, meses: int = 6) -> list[dict]:
         rows = conn.execute(sql, (categoria, inicio.isoformat())).fetchall()
 
     return [{"mes": row["mes"], "total": row["total"]} for row in rows]
-
 
 @tool
 def get_resumen_ingresos_vs_gastos(periodo: str) -> dict:
@@ -120,7 +117,6 @@ def get_resumen_ingresos_vs_gastos(periodo: str) -> dict:
         "gastos": gastos,
         "ahorro": round(ingresos - gastos, 2),
     }
-
 
 @tool
 def get_progreso_objetivo() -> dict:
@@ -165,7 +161,6 @@ def get_progreso_objetivo() -> dict:
         "porcentaje": porcentaje,
     }
 
-
 @tool
 def get_top_gastos(periodo: str, n: int = 5) -> list[dict]:
     """
@@ -202,7 +197,6 @@ def get_top_gastos(periodo: str, n: int = 5) -> list[dict]:
         }
         for row in rows
     ]
-
 
 ALL_TOOLS = [
     get_gastos_periodo,
