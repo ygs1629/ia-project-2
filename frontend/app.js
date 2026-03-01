@@ -370,7 +370,8 @@ function _agregarBurbuja(texto, tipo) {
 }
 
 // indicador visual de qué tool está ejecutando el agente en este momento
-function _agregarIndicadorTool(toolNombre) {
+// si toolNombre es null (o desconocido) muestra el texto genérico
+function _agregarIndicadorTool(toolNombre = null) {
   const area = document.getElementById("chatMensajes");
   if (!area) return null;
 
@@ -385,9 +386,11 @@ function _agregarIndicadorTool(toolNombre) {
     "get_top_gastos":                 "Buscando tus mayores gastos…",
   };
 
+  const texto = (toolNombre && nombres[toolNombre]) ? nombres[toolNombre] : "Consultando base de datos…";
+
   indicador.innerHTML = `
     <span class="tool-icon">⚙</span>
-    <span class="tool-texto">${nombres[toolNombre] || "Consultando base de datos…"}</span>
+    <span class="tool-texto">${texto}</span>
   `;
 
   area.appendChild(indicador);
@@ -411,8 +414,8 @@ async function enviarMensaje() {
 
   const burbujaEspera = _agregarBurbuja("", "agente");
 
-  // mostramos el indicador de tool antes de saber cuál usará 
-  const indicadorDB = _agregarIndicadorTool("get_gastos_periodo");
+  // mostramos el indicador genérico mientras esperamos saber qué tool usará el agente
+  const indicadorDB = _agregarIndicadorTool(null);
   if (indicadorDB) indicadorDB.classList.add("chat-tool-pending");
 
   try {
