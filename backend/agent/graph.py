@@ -15,6 +15,8 @@ from .tools import ALL_TOOLS
 
 memory = MemorySaver()
 
+_graph_cache: dict = {}
+
 def _build_system_prompt() -> str:
     hoy = date.today()
     fecha_str = f"{hoy.day} de {hoy.strftime('%B')} de {hoy.year}"  
@@ -33,12 +35,17 @@ NODE_TOOLS = "tools"
 def build_graph(api_key: str) -> "CompiledGraph":
     """
     Construye y compila el grafo LangGraph.
+    El grafo se cachea por api_key, por lo que solo se compila una vez
+    por clave y se reutiliza en las siguientes peticiones.
 
     Parámetros:
         api_key: API Key de Google AI (Gemini) proporcionada por el usuario en cada petición.
 
     Devuelve el grafo compilado listo para invocar.
     """
+    if api_key in _graph_cache:
+        return _graph_cache[api_key]
+
     llm = ChatGoogleGenerativeAI(
         model="gemini-2.0-flash",
         temperature=0.3,
@@ -72,7 +79,9 @@ def build_graph(api_key: str) -> "CompiledGraph":
 
     graph_builder.add_edge(NODE_TOOLS, NODE_LLM)
 
-    return graph_builder.compile(checkpointer=memory)
+    compiled = graph_builder.compile(checkpointer=memory)
+    _graph_cache[api_key] = compiled
+    return compiled
 
 # para probar que funciona el agente en terminal
 if __name__ == "__main__":
