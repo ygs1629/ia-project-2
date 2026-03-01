@@ -5,10 +5,50 @@ Despliegue:
     Hugging Face:       uvicorn app:app --host 0.0.0.0 --port 7860
 """
 
+import sqlite3
+from contextlib import asynccontextmanager
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.routes import router
+
+DB_PATH = Path(__file__).parent / "data" / "finanzas.db"
+
+def init_db() -> None:
+    """
+    Crea las tablas si no existen.
+    Se ejecuta una sola vez al arrancar el servidor, garantizando
+    que el esquema esté listo independientemente de si se han
+    ejecutado los scripts de datos o no.
+    """
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.executescript("""
+            CREATE TABLE IF NOT EXISTS transacciones (
+                id        INTEGER PRIMARY KEY AUTOINCREMENT,
+                fecha     TEXT    NOT NULL,
+                concepto  TEXT    NOT NULL,
+                importe   REAL    NOT NULL,
+                categoria TEXT    NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS objetivos (
+                id               INTEGER PRIMARY KEY AUTOINCREMENT,
+                nombre           TEXT    NOT NULL UNIQUE,
+                importe_objetivo REAL    NOT NULL,
+                importe_actual   REAL    NOT NULL DEFAULT 0,
+                fecha_limite     DATE    NOT NULL
+            );
+        """)
+        conn.commit()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Inicializa la base de datos al arrancar el servidor."""
+    init_db()
+    yield
 
 app = FastAPI(
     title="Asistente Financiero Virtual",
@@ -17,15 +57,16 @@ app = FastAPI(
         "La API Key del usuario se pasa en cada petición y nunca se almacena."
     ),
     version="1.0.0",
+    lifespan=lifespan,
 )
 
-# CORS permite cualquier origen 
+# CORS permite cualquier origen
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=False,        
+    allow_credentials=False,
     allow_methods=["GET", "POST"],
-    allow_headers=["*"],            
+    allow_headers=["*"],
 )
 
 app.include_router(router)

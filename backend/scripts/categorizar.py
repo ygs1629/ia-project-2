@@ -14,9 +14,9 @@ import pandas as pd
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage, SystemMessage
 
-BASE_DIR  = Path(__file__).parent.parent 
-CSV_PATH  = BASE_DIR / "data" / "transacciones_sucias.csv"
-DB_PATH   = BASE_DIR / "data" / "finanzas.db"
+BASE_DIR = Path(__file__).parent.parent
+CSV_PATH = BASE_DIR / "data" / "transacciones_sucias.csv"
+DB_PATH  = BASE_DIR / "data" / "finanzas.db"
 
 CATEGORIAS = [
     "Vivienda",
@@ -50,12 +50,18 @@ SYSTEM_PROMPT = textwrap.dedent(f"""
     - Netflix, Spotify, Adobe, Microsoft 365, subscripciones recurrentes → "Suscripciones".
     - Si no encaja en ninguna categoría → "Otros".
 
-    Recibirás un array JSON con objetos {{\"id\": N, \"concepto\": \"...\"}}.
-    Responde SOLO con un array JSON de objetos {{\"id\": N, \"categoria\": \"...\"}}.
+    Recibirás un array JSON con objetos {{"id": N, "concepto": "..."}}.
+    Responde SOLO con un array JSON de objetos {{"id": N, "categoria": "..."}}.
     Sin texto adicional, sin bloques de código, solo el JSON puro.
 """).strip()
 
-def init_db(conn: sqlite3.Connection) -> None:
+def _ensure_tables(conn: sqlite3.Connection) -> None:
+    """
+    Crea las tablas si no existen.
+    Normalmente app.py ya las habrá creado al arrancar, pero si se
+    ejecuta este script de forma aislada (p.ej. en setup inicial)
+    también funciona correctamente.
+    """
     conn.executescript("""
         CREATE TABLE IF NOT EXISTS transacciones (
             id        INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -74,11 +80,10 @@ def init_db(conn: sqlite3.Connection) -> None:
         );
     """)
     conn.commit()
-    print("Tablas creadas o ya existían.")
 
 def clasificar_batch(
     llm: ChatGoogleGenerativeAI,
-    batch: list[dict],          
+    batch: list[dict],
     intento: int = 0,
 ) -> dict[int, str]:
     """Llama al LLM y devuelve {id: categoria}."""
@@ -91,7 +96,6 @@ def clasificar_batch(
     response = llm.invoke(messages)
     raw = response.content.strip()
 
-    # Limpieza defensiva: quitar ```json ... ```
     if raw.startswith("```"):
         raw = raw.split("```")[1]
         if raw.startswith("json"):
@@ -102,11 +106,10 @@ def clasificar_batch(
         resultados = json.loads(raw)
     except json.JSONDecodeError as e:
         if intento < 2:
-            print(f"JSON inválido en intento {intento + 1}, reintentando...")
+            print(f"  ⚠ JSON inválido en intento {intento + 1}, reintentando...")
             return clasificar_batch(llm, batch, intento + 1)
         raise ValueError(f"No se pudo parsear la respuesta del LLM: {e}\nRaw: {raw[:300]}")
 
-    # Normalizar: asegurarse de que la categoría es válida
     resultado_map = {}
     for item in resultados:
         cat = item.get("categoria", "Otros")
@@ -124,7 +127,6 @@ def main() -> None:
             "  export GOOGLE_API_KEY=AIza..."
         )
 
-    # Cargar CSV
     if not CSV_PATH.exists():
         raise FileNotFoundError(
             f"No se encontró el CSV en {CSV_PATH}.\n"
@@ -135,11 +137,10 @@ def main() -> None:
     df = pd.read_csv(CSV_PATH, parse_dates=["Fecha"])
     print(f"{len(df)} transacciones cargadas.")
 
-    # Inicializar SQLite
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
-    init_db(conn)
+    _ensure_tables(conn)
 
-    # Preguntar si reemplazar si ya hay datos
     count = conn.execute("SELECT COUNT(*) FROM transacciones").fetchone()[0]
     if count > 0:
         print(f"\nLa tabla 'transacciones' ya tiene {count} filas.")
@@ -153,44 +154,42 @@ def main() -> None:
             conn.close()
             return
 
-    # Inicializar LLM
     llm = ChatGoogleGenerativeAI(
         model="gemini-2.5-flash",
         temperature=0,
         google_api_key=api_key,
     )
 
-    # Preparar items para clasificar
     items = [
         {"id": int(idx), "concepto": row["Concepto_Bancario"]}
         for idx, row in df.iterrows()
     ]
 
-    BATCH_SIZE = 20
-    total      = len(items)
+    BATCH_SIZE    = 20
+    total         = len(items)
     categorias_map: dict[int, str] = {}
 
-    print(f"\n Clasificando {total} conceptos en batches de {BATCH_SIZE}...")
+    print(f"\nClasificando {total} conceptos en batches de {BATCH_SIZE}...")
     for start in range(0, total, BATCH_SIZE):
-        batch = items[start : start + BATCH_SIZE]
-        batch_num = start // BATCH_SIZE + 1
+        batch       = items[start: start + BATCH_SIZE]
+        batch_num   = start // BATCH_SIZE + 1
         total_batches = (total + BATCH_SIZE - 1) // BATCH_SIZE
 
-        print(f"Batch {batch_num}/{total_batches} ({start + 1}–{min(start + BATCH_SIZE, total)})...", end=" ", flush=True)
+        print(f"  Batch {batch_num}/{total_batches} ({start + 1}–{min(start + BATCH_SIZE, total)})...", end=" ", flush=True)
         result = clasificar_batch(llm, batch)
         categorias_map.update(result)
+        print("✓")
 
-    # Insertar en SQLite
-    print("\n Insertando en finanzas.db...")
-    filas = []
-    for idx, row in df.iterrows():
-        categoria = categorias_map.get(int(idx), "Otros")
-        filas.append((
+    print("\nInsertando en finanzas.db...")
+    filas = [
+        (
             row["Fecha"].strftime("%Y-%m-%d"),
             row["Concepto_Bancario"],
             float(row["Importe"]),
-            categoria,
-        ))
+            categorias_map.get(int(idx), "Otros"),
+        )
+        for idx, row in df.iterrows()
+    ]
 
     conn.executemany(
         "INSERT INTO transacciones (fecha, concepto, importe, categoria) VALUES (?, ?, ?, ?)",
@@ -198,19 +197,17 @@ def main() -> None:
     )
     conn.commit()
 
-    # Resumen
     total_insertadas = conn.execute("SELECT COUNT(*) FROM transacciones").fetchone()[0]
-    print(f"\n{total_insertadas} transacciones insertadas en {DB_PATH}")
+    print(f"\n {total_insertadas} transacciones insertadas en {DB_PATH}")
 
     print("\nDistribución por categoría:")
     for cat, cnt in conn.execute(
         "SELECT categoria, COUNT(*) as n FROM transacciones GROUP BY categoria ORDER BY n DESC"
     ).fetchall():
-        print(f"{cat:<15} {cnt:>4} transacciones")
+        print(f"  {cat:<15} {cnt:>4} transacciones")
 
     conn.close()
     print("\nCategorización completada.")
-
 
 if __name__ == "__main__":
     main()
