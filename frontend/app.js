@@ -8,19 +8,21 @@ let PERIODO_ACTIVO = "mes";
 // referencia al gráfico para poder destruirlo antes de redibujar
 let graficoDonut = null;
 
-// un color por categoría
-const COLORES_CATEGORIAS = [
-  "#0891B2", // Vivienda
-  "#0D9488", // Supermercado
-  "#7C3AED", // Suministros
-  "#D97706", // Ocio
-  "#059669", // Restaurantes
-  "#DC2626", // Transporte
-  "#DB2777", // Salud
-  "#EA580C", // Suscripciones
-];
+const COLORES_CATEGORIAS = {
+  Vivienda:      "#0891B2",
+  Supermercado:  "#0D9488",
+  Suministros:   "#7C3AED",
+  Ocio:          "#D97706",
+  Restaurantes:  "#059669",
+  Transporte:    "#DC2626",
+  Salud:         "#DB2777",
+  Suscripciones: "#EA580C",
+  Otros:         "#6B7280",
+};
 
-const COLORES_HOVER = COLORES_CATEGORIAS.map((c) => c + "CC");
+const COLORES_HOVER = Object.fromEntries(
+  Object.entries(COLORES_CATEGORIAS).map(([k, v]) => [k, v + "CC"])
+);
 
 function formatearEuro(valor) {
   return new Intl.NumberFormat("es-ES", {
@@ -59,8 +61,8 @@ function renderizarGrafico(gastosPorCategoria) {
 
   const etiquetas = Object.keys(gastosPorCategoria);
   const valores   = Object.values(gastosPorCategoria);
-  const cfondo    = etiquetas.map((_, i) => COLORES_CATEGORIAS[i % COLORES_CATEGORIAS.length]);
-  const chover    = etiquetas.map((_, i) => COLORES_HOVER[i % COLORES_HOVER.length]);
+  const cfondo    = etiquetas.map((cat) => COLORES_CATEGORIAS[cat] ?? "#6B7280");
+  const chover    = etiquetas.map((cat) => COLORES_HOVER[cat]      ?? "#6B7280CC");
 
   const total = valores.reduce((a, b) => a + b, 0);
 
@@ -300,7 +302,7 @@ async function cambiarPeriodo(nuevoPeriodo) {
   }
 }
 
-// lista los N gastos más altos del período 
+// lista los N gastos más altos del período
 function renderizarTopGastos(lista) {
   const contenedor = document.getElementById("listaTopGastos");
   if (!contenedor) { console.warn("SFE: falta #listaTopGastos"); return; }
@@ -312,20 +314,8 @@ function renderizarTopGastos(lista) {
 
   contenedor.innerHTML = "";
 
-  const COLORES_CAT = {
-    Vivienda:      "#0891B2",
-    Supermercado:  "#0D9488",
-    Suministros:   "#7C3AED",
-    Ocio:          "#D97706",
-    Restaurantes:  "#059669",
-    Transporte:    "#DC2626",
-    Salud:         "#DB2777",
-    Suscripciones: "#EA580C",
-    Otros:         "#6B7280",
-  };
-
   lista.forEach((gasto, idx) => {
-    const color = COLORES_CAT[gasto.categoria] || "#6B7280";
+    const color = COLORES_CATEGORIAS[gasto.categoria] ?? "#6B7280";
     const fechaFormateada = new Date(gasto.fecha).toLocaleDateString("es-ES", {
       day: "numeric", month: "short",
     });
