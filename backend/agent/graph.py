@@ -6,12 +6,14 @@ from datetime import date
 
 from langchain_core.messages import SystemMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
 
 from .state import AgentState
 from .tools import ALL_TOOLS
 
+memory = MemorySaver()
 
 def _build_system_prompt() -> str:
     hoy = date.today()
@@ -27,7 +29,6 @@ def _build_system_prompt() -> str:
 
 NODE_LLM = "llm"
 NODE_TOOLS = "tools"
-
 
 def build_graph(api_key: str) -> "CompiledGraph":
     """
@@ -50,7 +51,6 @@ def build_graph(api_key: str) -> "CompiledGraph":
         response = llm.invoke([system_prompt] + state["messages"])
         return {"messages": [response]}
 
-    # edge condicional: ¿el LLM quiere ejecutar una tool?
     def should_use_tool(state: AgentState) -> str:
         last_message = state["messages"][-1]
         if hasattr(last_message, "tool_calls") and last_message.tool_calls:
@@ -70,10 +70,9 @@ def build_graph(api_key: str) -> "CompiledGraph":
         {NODE_TOOLS: NODE_TOOLS, END: END},
     )
 
-    # después de ejecutar tools, volvemos al LLM para que redacte la respuesta final
     graph_builder.add_edge(NODE_TOOLS, NODE_LLM)
 
-    return graph_builder.compile()
+    return graph_builder.compile(checkpointer=memory)
 
 # para probar que funciona el agente en terminal
 if __name__ == "__main__":

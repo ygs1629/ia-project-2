@@ -8,10 +8,6 @@ let PERIODO_ACTIVO = "mes";
 // referencia al gráfico para poder destruirlo antes de redibujar
 let graficoDonut = null;
 
-// historial del chat 
-const MAX_HISTORIAL = 10;
-let historialChat = [];
-
 // un color por categoría
 const COLORES_CATEGORIAS = [
   "#0891B2", // Vivienda
@@ -413,12 +409,6 @@ async function enviarMensaje() {
 
   _agregarBurbuja(texto, "usuario");
 
-  historialChat.push({ rol: "usuario", texto });
-
-  if (historialChat.length > MAX_HISTORIAL * 2) {
-    historialChat = historialChat.slice(2); 
-  }
-
   const burbujaEspera = _agregarBurbuja("", "agente");
 
   // mostramos el indicador de tool antes de saber cuál usará 
@@ -426,7 +416,7 @@ async function enviarMensaje() {
   if (indicadorDB) indicadorDB.classList.add("chat-tool-pending");
 
   try {
-    const data = await enviarMensajeChat(texto, historialChat);
+    const data = await enviarMensajeChat(texto);
 
     if (indicadorDB) {
       if (data.tool_usada) {
@@ -452,8 +442,6 @@ async function enviarMensaje() {
       burbujaEspera.innerHTML = "";
       burbujaEspera.textContent = data.respuesta || "El agente no devolvió respuesta.";
     }
-
-    historialChat.push({ rol: "agente", texto: data.respuesta });
 
   } catch (error) {
     console.error("SFE: error en chat →", error.message);

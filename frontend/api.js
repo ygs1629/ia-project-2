@@ -95,7 +95,7 @@ async function fetchTopGastos(periodo, n = 5) {
 
 // enviarMensajeChat — POST /api/chat
 
-async function enviarMensajeChat(mensaje, historial = []) {
+async function enviarMensajeChat(mensaje) {
   const url    = `${BASE_URL}/api/chat`;
   const apiKey = localStorage.getItem("google_api_key");
 
@@ -107,8 +107,7 @@ async function enviarMensajeChat(mensaje, historial = []) {
     },
     body: JSON.stringify({
       mensaje,
-      user_id:   _getUserId(),
-      historial: historial, 
+      user_id: _getUserId(),
     }),
   });
 

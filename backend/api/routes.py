@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
-from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.messages import HumanMessage
 from pydantic import BaseModel
 
 from agent.graph import build_graph
@@ -24,9 +24,7 @@ from utils import fecha_inicio, PERIODOS_VALIDOS
 
 DB_PATH = Path(__file__).parent.parent / "data" / "finanzas.db"
 
-MAX_HISTORIAL_MENSAJES = 50   # máximo número de turnos en el historial
-MAX_MENSAJE_CHARS = 4_000     # máximo de caracteres por mensaje individual
-ROLES_VALIDOS = {"usuario", "agente"}
+MAX_MENSAJE_CHARS = 4_000     
 
 router = APIRouter(prefix="/api")
 
@@ -35,14 +33,12 @@ def _get_conn() -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row
     return conn
 
-
 def _validar_periodo(periodo: str) -> None:
     if periodo not in PERIODOS_VALIDOS:
         raise HTTPException(
             status_code=400,
             detail=f"Periodo inválido. Usa uno de: {', '.join(sorted(PERIODOS_VALIDOS))}",
         )
-
 
 def _extract_api_key(authorization: Optional[str] = Header(None)) -> str:
     """Extrae la API Key del header Authorization: Bearer <key>."""
@@ -55,7 +51,6 @@ def _extract_api_key(authorization: Optional[str] = Header(None)) -> str:
     if not key:
         raise HTTPException(status_code=401, detail="API Key vacía.")
     return key
-
 
 def _objetivo_dict(row, hoy: date) -> dict:
     """Construye el dict de un objetivo desde una fila SQLite."""
@@ -79,9 +74,7 @@ def _objetivo_dict(row, hoy: date) -> dict:
 
 class MensajeChat(BaseModel):
     mensaje: str
-    historial: list[dict] = []
-    user_id: str = ""
-
+    user_id: str
 
 class ObjetivoIn(BaseModel):
     nombre: str
@@ -237,66 +230,21 @@ def post_chat(
     api_key: str = Depends(_extract_api_key),
 ):
     """
-    Recibe el mensaje del usuario y el historial en formato {rol, texto}
-    (el formato que usa app.js), lo convierte a mensajes LangChain,
-    invoca el grafo y devuelve { respuesta, tool_usada }.
-
-    Validaciones:
-      - El historial no puede superar MAX_HISTORIAL_MENSAJES entradas.
-      - Cada mensaje no puede superar MAX_MENSAJE_CHARS caracteres.
-      - Los roles desconocidos se rechazan con un error 422 explícito.
+    Recibe el mensaje del usuario e invoca el grafo LangGraph.
+    El historial de conversación lo gestiona LangGraph automáticamente
+    mediante MemorySaver, usando user_id como thread_id.
     """
-    # validar longitud del historial 
-    if len(body.historial) > MAX_HISTORIAL_MENSAJES:
-        raise HTTPException(
-            status_code=422,
-            detail=(
-                f"El historial supera el límite permitido de "
-                f"{MAX_HISTORIAL_MENSAJES} mensajes."
-            ),
-        )
-
-    # validar mensaje actual 
     if len(body.mensaje) > MAX_MENSAJE_CHARS:
         raise HTTPException(
             status_code=422,
             detail=f"El mensaje supera el límite de {MAX_MENSAJE_CHARS} caracteres.",
         )
 
-    # convertir historial a mensajes LangChain 
-    mensajes = []
-    for idx, entry in enumerate(body.historial):
-        rol   = entry.get("rol", "")
-        texto = entry.get("texto", "")
-
-        if rol not in ROLES_VALIDOS:
-            raise HTTPException(
-                status_code=422,
-                detail=(
-                    f"Rol desconocido '{rol}' en la entrada {idx} del historial. "
-                    f"Valores válidos: {', '.join(sorted(ROLES_VALIDOS))}."
-                ),
-            )
-
-        if len(texto) > MAX_MENSAJE_CHARS:
-            raise HTTPException(
-                status_code=422,
-                detail=(
-                    f"El mensaje en la posición {idx} del historial supera "
-                    f"el límite de {MAX_MENSAJE_CHARS} caracteres."
-                ),
-            )
-
-        if rol == "usuario":
-            mensajes.append(HumanMessage(content=texto))
-        else:  
-            mensajes.append(AIMessage(content=texto))
-
-    mensajes.append(HumanMessage(content=body.mensaje))
+    config = {"configurable": {"thread_id": body.user_id}}
 
     try:
         graph = build_graph(api_key)
-        result = graph.invoke({"messages": mensajes})
+        result = graph.invoke({"messages": [HumanMessage(content=body.mensaje)]}, config)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Error del agente: {str(exc)}")
 
