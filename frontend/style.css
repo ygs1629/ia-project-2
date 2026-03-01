@@ -1,5 +1,4 @@
-/* style.css — Sentinel Finance Engine
-   Diseño FinTech oscuro con fuentes DM Serif Display y DM Mono */
+/* style.css — Sentinel Finance Engine */
 
 @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&display=swap');
 
@@ -800,7 +799,7 @@ header {
   line-height: 1.6;
 }
 
-/* toast de error global — aparece a la izquierda del chat */
+/* toast de error global */
 #errorGlobal {
   display: none;
   position: fixed;
@@ -1137,7 +1136,7 @@ footer {
   border-top: 1px solid rgba(30,45,69,.4);
 }
 
-/* Modal objetivo — overlay centrado igual que modalApiKey */
+/* modal objetivo (overlay centrado igual que modalApiKey) */
 #modalObjetivo {
   display: none;
   position: fixed;
@@ -1150,7 +1149,7 @@ footer {
   animation: fadeIn .3s ease;
 }
 
-/* Botón editar objetivo */
+/* botón editar objetivo */
 .btn-editar-objetivo {
   display: inline-flex;
   align-items: center;
@@ -1171,7 +1170,7 @@ footer {
   border-color: rgba(8, 145, 178, .5);
 }
 
-/* Modal objetivo — campos de fecha y número */
+/* modal objetivo campos de fecha y número */
 #modalObjetivo input[type="date"],
 #modalObjetivo input[type="number"] {
   color-scheme: dark;

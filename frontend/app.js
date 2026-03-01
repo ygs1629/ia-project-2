@@ -1,30 +1,18 @@
 // app.js — Capa de presentación del dashboard
-//
-// Módulos:
-//    renderizarResumen(resumen)           → tarjetas ingresos / gastos / ahorro
-//    renderizarGrafico(gastosPorCat)      → donut chart con Chart.js
-//    renderizarTopGastos(lista)           → panel Top 5 gastos
-//    renderizarObjetivo(obj)              → card de progreso del objetivo
-//    cambiarPeriodo(periodo)              → actualiza dashboard al cambiar filtro
-//    enviarMensaje()                      → envía mensaje al chat y renderiza respuesta
-//    inicializarDashboard()              → punto de entrada, lanza todos los fetch
-//
-// BASE_URL apunta a localhost:8000 en desarrollo
-// y a HuggingFace Spaces en producción.
 
 const BASE_URL = "http://localhost:8000";
 
-// período seleccionado en el filtro, "mes" por defecto
+// período seleccionado en el filtro y mes por defecto
 let PERIODO_ACTIVO = "mes";
 
 // referencia al gráfico para poder destruirlo antes de redibujar
 let graficoDonut = null;
 
-// historial del chat — se manda al backend en cada mensaje para que el agente tenga contexto
+// historial del chat 
 const MAX_HISTORIAL = 10;
 let historialChat = [];
 
-// un color por categoría, mismo orden que devuelve el backend
+// un color por categoría
 const COLORES_CATEGORIAS = [
   "#0891B2", // Vivienda
   "#0D9488", // Supermercado
@@ -38,7 +26,6 @@ const COLORES_CATEGORIAS = [
 
 const COLORES_HOVER = COLORES_CATEGORIAS.map((c) => c + "CC");
 
-// formatea cualquier número como "1.250,50 €"
 function formatearEuro(valor) {
   return new Intl.NumberFormat("es-ES", {
     style: "currency",
@@ -182,8 +169,6 @@ function _renderizarTablaCategoriasConBarras(etiquetas, valores, colores) {
 
 // rellena la card del objetivo con los datos de get_progreso_objetivo
 function renderizarObjetivo(obj) {
-  // Si el contenedor fue sobreescrito por el estado "sin objetivo" (404),
-  // restaurar la estructura completa antes de rellenar datos.
   const cont = document.getElementById("objetivosContainer");
   if (cont && !document.getElementById("objetivoNombre")) {
     cont.innerHTML = `
@@ -276,7 +261,6 @@ function renderizarObjetivo(obj) {
 }
 
 // se llama al hacer clic en los botones del filtro
-// re-fetcha resumen + donut + top en paralelo para no encadenar peticiones
 async function cambiarPeriodo(nuevoPeriodo) {
   if (!PERIODOS_VALIDOS.includes(nuevoPeriodo)) {
     console.error(`SFE: período inválido "${nuevoPeriodo}"`);
@@ -320,7 +304,7 @@ async function cambiarPeriodo(nuevoPeriodo) {
   }
 }
 
-// lista los N gastos más altos del período — el orden lo decide el backend
+// lista los N gastos más altos del período 
 function renderizarTopGastos(lista) {
   const contenedor = document.getElementById("listaTopGastos");
   if (!contenedor) { console.warn("SFE: falta #listaTopGastos"); return; }
@@ -436,7 +420,7 @@ async function enviarMensaje() {
 
   const burbujaEspera = _agregarBurbuja("", "agente");
 
-  // mostramos el indicador de tool antes de saber cuál usará — se actualiza al responder
+  // mostramos el indicador de tool antes de saber cuál usará 
   const indicadorDB = _agregarIndicadorTool("get_gastos_periodo");
   if (indicadorDB) indicadorDB.classList.add("chat-tool-pending");
 
@@ -503,12 +487,12 @@ function verificarApiKey() {
   return true;
 }
 
-// abre el modal de objetivo — rellena los campos si ya hay datos cargados
+// abre el modal de objetivo y rellena los campos si ya hay datos cargados
 function abrirModalObjetivo() {
   const modal = document.getElementById("modalObjetivo");
   if (!modal) return;
 
-  // Pre-rellenar con los valores actuales si están visibles en la card
+  // pre-rellenar con los valores actuales si están visibles en la card
   const nombre  = document.getElementById("objetivoNombre")?.textContent?.trim();
   const total   = document.getElementById("objetivoTotal")?.dataset?.raw;
   const actual  = document.getElementById("objetivoActual")?.dataset?.raw;
@@ -597,7 +581,6 @@ async function inicializarDashboard() {
     fetchObjetivo()
       .then((obj) => renderizarObjetivo(obj))
       .catch((err) => {
-        // Si no hay objetivo definido (404) mostramos el modal para crearlo
         if (err.message.includes("404")) {
           const cont = document.getElementById("objetivosContainer");
           if (cont) {
@@ -661,7 +644,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Cerrar modal objetivo con Escape
+  // cerrar modal objetivo con Escape
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
       const modal = document.getElementById("modalObjetivo");
@@ -671,7 +654,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Enviar formulario objetivo con Enter en el campo de fecha
+  // enviar formulario objetivo con Enter en el campo de fecha
   document.getElementById("inputObjetivoFecha")?.addEventListener("keydown", (e) => {
     if (e.key === "Enter") guardarObjetivo();
   });

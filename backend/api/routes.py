@@ -5,13 +5,13 @@ Endpoints que consume el frontend (api.js):
     GET  /api/dashboard                     → gastos_por_categoria
     GET  /api/resumen?periodo=X             → { ingresos, gastos, ahorro }
     GET  /api/top-gastos?periodo=X&n=5      → lista de los N gastos más altos
-    GET  /api/objetivo                      → primer objetivo (el frontend solo renderiza uno)
+    GET  /api/objetivo                      → objetivo de ahorro
     POST /api/chat                          → mensaje al agente LangGraph
-    POST /api/objetivos                     → crear o actualizar un objetivo
+    POST /api/objetivos                     → crear o actualizar el objetivo
 """
 
 import sqlite3
-from datetime import date, timedelta
+from datetime import date
 from pathlib import Path
 from typing import Optional
 
@@ -20,41 +20,29 @@ from langchain_core.messages import HumanMessage, AIMessage
 from pydantic import BaseModel
 
 from agent.graph import build_graph
+from utils import fecha_inicio, PERIODOS_VALIDOS
 
 DB_PATH = Path(__file__).parent.parent / "data" / "finanzas.db"
-PERIODOS_VALIDOS = {"semana", "mes", "trimestre", "semestre", "anual"}
+
+MAX_HISTORIAL_MENSAJES = 50   # máximo número de turnos en el historial
+MAX_MENSAJE_CHARS = 4_000     # máximo de caracteres por mensaje individual
+ROLES_VALIDOS = {"usuario", "agente"}
 
 router = APIRouter(prefix="/api")
-
-# Funciones útiles internas
 
 def _get_conn() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
-def _fecha_inicio(periodo: str) -> date:
-    """Devuelve la fecha de inicio del periodo relativa a hoy."""
-    hoy = date.today()
-    if periodo == "semana":
-        return hoy - timedelta(days=hoy.weekday())
-    elif periodo == "mes":
-        return hoy.replace(day=1)
-    elif periodo == "trimestre":
-        mes = ((hoy.month - 1) // 3) * 3 + 1
-        return hoy.replace(month=mes, day=1)
-    elif periodo == "semestre":
-        mes = 1 if hoy.month <= 6 else 7
-        return hoy.replace(month=mes, day=1)
-    else:  # anual
-        return hoy.replace(month=1, day=1)
 
-def _validar_periodo(periodo: str):
+def _validar_periodo(periodo: str) -> None:
     if periodo not in PERIODOS_VALIDOS:
         raise HTTPException(
             status_code=400,
             detail=f"Periodo inválido. Usa uno de: {', '.join(sorted(PERIODOS_VALIDOS))}",
         )
+
 
 def _extract_api_key(authorization: Optional[str] = Header(None)) -> str:
     """Extrae la API Key del header Authorization: Bearer <key>."""
@@ -68,12 +56,14 @@ def _extract_api_key(authorization: Optional[str] = Header(None)) -> str:
         raise HTTPException(status_code=401, detail="API Key vacía.")
     return key
 
+
 def _objetivo_dict(row, hoy: date) -> dict:
     """Construye el dict de un objetivo desde una fila SQLite."""
     falta = round(row["importe_objetivo"] - row["importe_actual"], 2)
     porcentaje = (
         round(row["importe_actual"] / row["importe_objetivo"] * 100, 1)
-        if row["importe_objetivo"] else 0
+        if row["importe_objetivo"]
+        else 0
     )
     dias_restantes = (date.fromisoformat(row["fecha_limite"]) - hoy).days
     return {
@@ -87,18 +77,17 @@ def _objetivo_dict(row, hoy: date) -> dict:
         "dias_restantes":   dias_restantes,
     }
 
-# Modelos Pydantic
-
 class MensajeChat(BaseModel):
     mensaje: str
-    historial: list[dict] = []  
-    user_id: str = ""           
+    historial: list[dict] = []
+    user_id: str = ""
+
 
 class ObjetivoIn(BaseModel):
     nombre: str
     importe_objetivo: float
     importe_actual: float = 0.0
-    fecha_limite: str  # ISO: "2025-12-31"
+    fecha_limite: str  
 
 # GET /api/dashboard
 
@@ -111,7 +100,7 @@ def get_dashboard(periodo: str = Query(default="mes")):
     """
     _validar_periodo(periodo)
     hoy = date.today()
-    inicio = _fecha_inicio(periodo)
+    inicio = fecha_inicio(periodo)
 
     with _get_conn() as conn:
         rows = conn.execute(
@@ -138,7 +127,7 @@ def get_resumen(periodo: str = Query(default="mes")):
     """Balance ingresos vs gastos del periodo."""
     _validar_periodo(periodo)
     hoy = date.today()
-    inicio = _fecha_inicio(periodo)
+    inicio = fecha_inicio(periodo)
 
     with _get_conn() as conn:
         row = conn.execute(
@@ -170,7 +159,7 @@ def get_top_gastos(
     """Los N conceptos individuales más caros del periodo."""
     _validar_periodo(periodo)
     hoy = date.today()
-    inicio = _fecha_inicio(periodo)
+    inicio = fecha_inicio(periodo)
 
     with _get_conn() as conn:
         rows = conn.execute(
@@ -194,7 +183,7 @@ def get_top_gastos(
         for row in rows
     ]
 
-# GET /api/objetivo  
+# GET /api/objetivo
 
 @router.get("/objetivo")
 def get_objetivo():
@@ -210,7 +199,7 @@ def get_objetivo():
 
     return _objetivo_dict(row, hoy)
 
-# POST /api/objetivo
+# POST /api/objetivos
 
 @router.post("/objetivos", status_code=201)
 def post_objetivo(objetivo: ObjetivoIn):
@@ -225,7 +214,6 @@ def post_objetivo(objetivo: ObjetivoIn):
 
     hoy = date.today()
     with _get_conn() as conn:
-        # Borra cualquier objetivo existente y crea el nuevo con id=1 siempre
         conn.execute("DELETE FROM objetivos")
         conn.execute(
             """
@@ -252,14 +240,56 @@ def post_chat(
     Recibe el mensaje del usuario y el historial en formato {rol, texto}
     (el formato que usa app.js), lo convierte a mensajes LangChain,
     invoca el grafo y devuelve { respuesta, tool_usada }.
+
+    Validaciones:
+      - El historial no puede superar MAX_HISTORIAL_MENSAJES entradas.
+      - Cada mensaje no puede superar MAX_MENSAJE_CHARS caracteres.
+      - Los roles desconocidos se rechazan con un error 422 explícito.
     """
+    # validar longitud del historial 
+    if len(body.historial) > MAX_HISTORIAL_MENSAJES:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"El historial supera el límite permitido de "
+                f"{MAX_HISTORIAL_MENSAJES} mensajes."
+            ),
+        )
+
+    # validar mensaje actual 
+    if len(body.mensaje) > MAX_MENSAJE_CHARS:
+        raise HTTPException(
+            status_code=422,
+            detail=f"El mensaje supera el límite de {MAX_MENSAJE_CHARS} caracteres.",
+        )
+
+    # convertir historial a mensajes LangChain 
     mensajes = []
-    for entry in body.historial:
-        rol   = entry.get("rol", "usuario")
+    for idx, entry in enumerate(body.historial):
+        rol   = entry.get("rol", "")
         texto = entry.get("texto", "")
+
+        if rol not in ROLES_VALIDOS:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    f"Rol desconocido '{rol}' en la entrada {idx} del historial. "
+                    f"Valores válidos: {', '.join(sorted(ROLES_VALIDOS))}."
+                ),
+            )
+
+        if len(texto) > MAX_MENSAJE_CHARS:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    f"El mensaje en la posición {idx} del historial supera "
+                    f"el límite de {MAX_MENSAJE_CHARS} caracteres."
+                ),
+            )
+
         if rol == "usuario":
             mensajes.append(HumanMessage(content=texto))
-        elif rol == "agente":
+        else:  
             mensajes.append(AIMessage(content=texto))
 
     mensajes.append(HumanMessage(content=body.mensaje))
