@@ -1,14 +1,4 @@
 // api.js — Módulo de comunicación con el backend 
-//
-// Funciones disponibles:
-//    fetchDashboardData()            → GET  /api/dashboard
-//    fetchResumen(periodo)           → GET  /api/resumen?periodo=X
-//    fetchTopGastos(periodo, n)      → GET  /api/top-gastos?periodo=X&n=5
-//    fetchObjetivo()                 → GET  /api/objetivo
-//    enviarMensajeChat(msg, hist)    → POST /api/chat
-//
-// La API Key se lee de localStorage("google_api_key") en cada llamada
-// y se envía en el header Authorization: Bearer <key>.
 
 const PERIODOS_VALIDOS = ["semana", "mes", "trimestre", "semestre", "anual"];
 
@@ -118,7 +108,7 @@ async function enviarMensajeChat(mensaje, historial = []) {
     body: JSON.stringify({
       mensaje,
       user_id:   _getUserId(),
-      historial: historial.slice(-10), // últimos 10 turnos para no saturar el contexto
+      historial: historial.slice(-10), 
     }),
   });
 
@@ -128,7 +118,7 @@ async function enviarMensajeChat(mensaje, historial = []) {
   return await respuesta.json();
 }
 
-// Genera o recupera un user_id persistente en localStorage
+// genera o recupera un user_id persistente en localStorage
 
 function _getUserId() {
   let uid = localStorage.getItem("sfe_user_id");

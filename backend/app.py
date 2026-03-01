@@ -19,7 +19,7 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# CORS: permite cualquier origen (necesario para GitHub Pages y Hugging Face)
+# CORS permite cualquier origen 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

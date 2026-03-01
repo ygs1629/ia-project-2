@@ -1,10 +1,5 @@
 """
 graph.py — Grafo LangGraph del asistente financiero.
-Arquitectura:
-    [usuario] → [nodo LLM] → ¿tool? → SÍ → [ejecutar tool] → [nodo LLM] → [respuesta]
-                                     → NO → [respuesta]
-La API Key se recibe como parámetro en cada invocación,
-NUNCA se hardcodea ni se guarda en el servidor.
 """
 
 from datetime import date
@@ -20,7 +15,7 @@ from .tools import ALL_TOOLS
 
 def _build_system_prompt() -> str:
     hoy = date.today()
-    fecha_str = hoy.strftime("%-d de %B de %Y")  # ej. "26 de febrero de 2026"
+    fecha_str = f"{hoy.day} de {hoy.strftime('%B')} de {hoy.year}"  
     dia_semana = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"][hoy.weekday()]
     return (
         f"Eres un asistente financiero personal. "
@@ -30,7 +25,6 @@ def _build_system_prompt() -> str:
         f"Responde siempre en español, de forma concisa y empática."
     )
 
-# Nombres de nodos para claridad
 NODE_LLM = "llm"
 NODE_TOOLS = "tools"
 
@@ -81,7 +75,7 @@ def build_graph(api_key: str) -> "CompiledGraph":
 
     return graph_builder.compile()
 
-# para probar que funciona el agente
+# para probar que funciona el agente en terminal
 if __name__ == "__main__":
     import os
     import sys
@@ -95,11 +89,11 @@ if __name__ == "__main__":
     graph = build_graph(api_key)
 
     preguntas = [
-        "¿Cuánto he gastado este trimestre por categoría?",                      # get_gastos_periodo
-        "¿Cómo ha evolucionado mi gasto en Supermercado los últimos 6 meses?",   # get_evolucion_categoria
-        "Dame el balance de ingresos y gastos del último semestre.",             # get_resumen_ingresos_vs_gastos
-        "¿Cómo voy con mi objetivo de Vacaciones de verano?",                    # get_progreso_objetivo
-        "¿Cuáles han sido mis 5 gastos más altos este año?",                     # get_top_gastos
+        "¿Cuánto he gastado este trimestre por categoría?",                      
+        "¿Cómo ha evolucionado mi gasto en Supermercado los últimos 6 meses?",   
+        "Dame el balance de ingresos y gastos del último semestre.",             
+        "¿Cómo voy con mi objetivo de Vacaciones de verano?",                    
+        "¿Cuáles han sido mis 5 gastos más altos este año?",                     
     ]
 
     for pregunta in preguntas:

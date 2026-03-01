@@ -195,13 +195,11 @@
           <h2 class="panel-title">Top 5 gastos</h2>
           <span class="panel-badge" id="badgePeriodo">Mes</span>
         </div>
-        <!-- lista generada por renderizarTopGastos() -->
         <ul class="top-gastos-lista" id="listaTopGastos" aria-label="Los 5 mayores gastos del período">
           <li class="top-gastos-cargando"><span class="spinner"></span> Cargando…</li>
         </ul>
       </div>
 
-      <!-- opacidad 0 hasta que carguen los datos del objetivo -->
       <div class="card-panel" id="objetivosContainer" style="opacity:0;transition:opacity .4s ease;">
         <div class="panel-header">
           <h2 class="panel-title">Objetivo de ahorro</h2>
@@ -290,7 +288,6 @@
 
   <div id="errorGlobal" role="alert"></div>
 
-  <!-- api.js debe cargarse antes que app.js -->
   <script src="api.js"></script>
   <script src="app.js"></script>
 
