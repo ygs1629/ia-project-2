@@ -60,10 +60,15 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS permite cualquier origen
+ORIGENES_PERMITIDOS = [
+    # URL del tu frontend en producción,
+    "http://localhost:5500",        
+    "http://127.0.0.1:5500"
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ORIGENES_PERMITIDOS,
     allow_credentials=False,
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
