@@ -108,7 +108,7 @@ async function enviarMensajeChat(mensaje, historial = []) {
     body: JSON.stringify({
       mensaje,
       user_id:   _getUserId(),
-      historial: historial.slice(-10), 
+      historial: historial, 
     }),
   });
 
