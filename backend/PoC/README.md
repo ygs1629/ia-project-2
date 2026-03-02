@@ -1,4 +1,4 @@
-# Pipeline para integración (si dios quiere)
+# Pipeline para integración
 
 
 ### STEP 1: Preprocesamiento y Calidad del Dato
