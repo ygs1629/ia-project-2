@@ -1,3 +1,93 @@
+# Pipeline para integración (si dios quiere)
+
+
+### STEP 1: Preprocesamiento y Calidad del Dato
+* **Módulo:** `src/preprocessing/prep_data.py`
+* **Clase Principal:** `DataQualityEngine`
+* **Entrada:** DataFrame crudo con el histórico de transacciones del usuario.
+* **Ejecución:** Se llama a la función `get_resampled_series()`, la cual internamente ejecuta `treat_outliers()`.
+* **Salida (Return):** Una `pd.Series` temporal limpia, suavizada y estructurada semanalmente.
+
+---
+
+### STEP 2: Diagnóstico y Gobernanza (EDA)
+* **Módulo:** `src/preprocessing/eda.py`
+* **Clase Principal:** `SeriesAnalyzer`
+* **Entrada:** La `pd.Series` generada en el Step 1.
+* **Ejecución:** Se instancia la clase y se llama a la función `run_analysis()`.
+* **Salida (Return):** Un diccionario (`eda_payload`) con los metadatos de la serie, scores de estabilidad, detección de shocks y una validación booleana (`valido_para_prediccion`).
+
+---
+
+### STEP 3: Enrutamiento Algorítmico (Model Router)
+* **Módulo:** `src/controllers/selection.py`
+* **Clase Principal:** `ModelRouter`
+* **Entrada:** La `pd.Series` (Step 1) y el diccionario `eda_payload` (Step 2).
+* **Ejecución:** Se llama a la función `get_forecaster()`, que internamente evalúa `determine_architecture()`.
+* **Salida (Return):** Devuelve la instancia del modelo predictivo correcto (`TimeForecaster` o `TransformerModel`), listo para ser ejecutado.
+
+---
+
+### STEP 4: Inferencia y Predicción
+* **Módulo:** `src/models/short_mid_term.py` o `src/models/transformers.py`
+* **Clases:** `TimeForecaster` / `TransformerModel`
+* **Entrada:** La instancia generada en el Step 3.
+* **Ejecución:** Se llama a la función principal `run_forecast()`.
+* **Salida (Return):** Un diccionario (`resultados_prediccion`) que contiene las listas de fechas futuras, predicciones puntuales medias, límite inferior, límite superior y la métrica de fiabilidad.
+
+---
+
+### STEP 5: Simulación Estocástica (Montecarlo)
+* **Módulo:** `src/simulators/montecarlo.py`
+* **Clase Principal:** `MonteCarloSimulator`
+* **Entrada:** El diccionario `resultados_prediccion` (Step 4), la meta de ahorro (ej. 3000€) y el ingreso semanal fijo del usuario.
+* **Ejecución:** Se llama a la función ejecutar_simulacion().
+* **Salida (Return):** Un diccionario (JSON final) con la Probabilidad de Éxito (%), y la proyección del ahorro en tres escenarios (Pesimista P10, Central P50, Optimista P90).
+
+
+
+# Grafo de flujo
+```mermaid
+graph TD
+    %% Estilos
+    classDef process fill:#232b38,stroke:#4a9eff,stroke-width:2px,color:#fff;
+    classDef logic fill:#3d3422,stroke:#d4a017,stroke-width:2px,color:#fff;
+
+    A([DATOS CRUDOS transacciones]) --> B[1. PREPROCESADO prep_data.py]
+    
+    subgraph DataQualityEngine
+    B --> C{Limpia y Agrupa}
+    C --> D[pd.Series Temporal]
+    end
+
+    D --> E[2. DIAGNÓSTICO EDA eda.py]
+    
+    subgraph SeriesAnalyzer
+    E --> F[Genera eda_payload]
+    F --> G[Validaciones y Scores]
+    end
+
+    G --> H[3. ENRUTADOR selection.py]
+
+    subgraph ModelRouter
+    H --> I{¿Calidad Suficiente?}
+    I -- No --> J[None / Error Calidad]
+    I -- Sí --> K[Modelo Instanciado]
+    end
+
+    K --> L[4. MOTOR DE INFERENCIA]
+    L --> M[resultados_prediccion dict]
+
+    M --> N[5. SIMULADOR ESTOCÁSTICO montecarlo.py]
+    
+    subgraph MonteCarloSimulator
+    N --> O[Inyectar Inputs Usuario Meta/Ingreso]
+    O --> P[JSON FINAL Frontend]
+    end
+
+    class B,E,H,L,N process;
+    class I logic;
+```
 
 # Infografía
 
