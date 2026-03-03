@@ -91,7 +91,7 @@ graph TD
 
 # Infografía
 
-![alt text](image-1.png)
+![alt text](summary.png)
 
 
 
