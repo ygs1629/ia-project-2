@@ -1,4 +1,6 @@
-// api.js — Módulo de comunicación con el backend 
+// api.js — Módulo de comunicación con el backend
+
+const BASE_URL = "http://localhost:8000";
 
 const PERIODOS_VALIDOS = ["semana", "mes", "trimestre", "semestre", "anual"];
 
@@ -77,6 +79,26 @@ async function fetchTopGastos(periodo, n = 5) {
   }
 
   const url    = `${BASE_URL}/api/top-gastos?periodo=${encodeURIComponent(periodo)}&n=${n}`;
+  const apiKey = localStorage.getItem("google_api_key");
+
+  const respuesta = await fetch(url, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      ...(apiKey && { Authorization: `Bearer ${apiKey}` }),
+    },
+  });
+
+  if (!respuesta.ok) {
+    throw new Error(`HTTP ${respuesta.status}: ${respuesta.statusText} — ${url}`);
+  }
+  return await respuesta.json();
+}
+
+// fetchPrediccion — GET /api/predicciones
+
+async function fetchPrediccion() {
+  const url    = `${BASE_URL}/api/predicciones`;
   const apiKey = localStorage.getItem("google_api_key");
 
   const respuesta = await fetch(url, {

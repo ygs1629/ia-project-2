@@ -20,6 +20,7 @@ from langchain_core.messages import HumanMessage
 from pydantic import BaseModel
 
 from agent.graph import build_graph
+from scripts.predicciones import GastosPredictor
 from utils import fecha_inicio, PERIODOS_VALIDOS
 
 DB_PATH = Path(__file__).parent.parent / "data" / "finanzas.db"
@@ -191,6 +192,17 @@ def get_objetivo():
         raise HTTPException(status_code=404, detail="No hay objetivos definidos.")
 
     return _objetivo_dict(row, hoy)
+
+# GET /api/predicciones
+
+@router.get("/predicciones")
+def get_predicciones():
+    """
+    Devuelve la predicción de gasto para la próxima semana
+    usando una Media Móvil Simple (SMA) sobre los últimos 30 días.
+    """
+    predictor = GastosPredictor()
+    return predictor.predecir_proxima_semana()
 
 # POST /api/objetivos
 

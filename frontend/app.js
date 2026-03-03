@@ -1,7 +1,5 @@
 // app.js — Capa de presentación del dashboard
 
-const BASE_URL = "http://localhost:8000";
-
 // período seleccionado en el filtro y mes por defecto
 let PERIODO_ACTIVO = "mes";
 
@@ -65,9 +63,6 @@ function renderizarGrafico(gastosPorCategoria) {
   const chover    = etiquetas.map((cat) => COLORES_HOVER[cat]      ?? "#6B7280CC");
 
   const total = valores.reduce((a, b) => a + b, 0);
-
-  const labelWrap = document.querySelector(".chart-center-label");
-  if (labelWrap) labelWrap.style.display = "none";
 
   _renderizarTablaCategoriasConBarras(etiquetas, valores, cfondo);
 
@@ -181,7 +176,12 @@ function renderizarObjetivo(obj) {
         </div>
       </div>
       <div class="objetivo-body">
-        <div class="objetivo-nombre" id="objetivoNombre"></div>
+        <div class="objetivo-nombre-row">
+          <div class="objetivo-nombre" id="objetivoNombre"></div>
+          <div class="objetivo-fecha-inline">
+            <span id="objetivoFecha">—</span>
+          </div>
+        </div>
         <div class="objetivo-barra-wrap" aria-label="Progreso del objetivo">
           <div class="objetivo-barra-track">
             <div class="objetivo-barra-fill" id="objetivoBarra" style="width:0%"></div>
@@ -204,9 +204,6 @@ function renderizarObjetivo(obj) {
             <span class="objetivo-metrica-label">Plazo</span>
             <span class="objetivo-metrica-valor" id="objetivoDias">—</span>
           </div>
-        </div>
-        <div class="objetivo-fecha">
-          📅 Fecha límite: <span id="objetivoFecha">—</span>
         </div>
       </div>
     `;
@@ -559,13 +556,16 @@ async function inicializarDashboard() {
       btn.classList.toggle("filtro-btn--activo", btn.dataset.periodo === PERIODO_ACTIVO);
     });
 
-    // el objetivo va aparte para que un fallo aquí no bloquee el resto del dashboard
-    fetchObjetivo()
-      .then((obj) => renderizarObjetivo(obj))
-      .catch((err) => {
-        if (err.message.includes("404")) {
-          const cont = document.getElementById("objetivosContainer");
-          if (cont) {
+    Promise.allSettled([fetchObjetivo(), fetchPrediccion()])
+      .then(([resObjetivo, resPrediccion]) => {
+        const cont = document.getElementById("objetivosContainer");
+        if (!cont) return;
+
+        if (resObjetivo.status === "fulfilled") {
+          renderizarObjetivo(resObjetivo.value);
+        } else {
+          const err = resObjetivo.reason;
+          if (err.message.includes("404")) {
             cont.innerHTML = `
               <div class="panel-header">
                 <h2 class="panel-title">Objetivo de ahorro</h2>
@@ -579,15 +579,17 @@ async function inicializarDashboard() {
                 </button>
               </div>
             `;
-            cont.style.opacity = "1";
-          }
-        } else {
-          console.warn("SFE: no se pudo cargar el objetivo →", err.message);
-          const cont = document.getElementById("objetivosContainer");
-          if (cont) {
+          } else {
+            console.warn("SFE: no se pudo cargar el objetivo →", err.message);
             cont.innerHTML = `<p style="color:var(--text-muted);font-size:.75rem;padding:1rem 0;">No se pudo cargar el objetivo de ahorro.</p>`;
-            cont.style.opacity = "1";
           }
+          cont.style.opacity = "1";
+        }
+
+        if (resPrediccion.status === "fulfilled") {
+          renderizarPrediccion(resPrediccion.value);
+        } else {
+          console.warn("SFE: no se pudo cargar la predicción →", resPrediccion.reason.message);
         }
       });
 
@@ -648,3 +650,45 @@ document.addEventListener("DOMContentLoaded", () => {
     );
   }, 1200);
 });
+
+// renderiza la sección de predicción SMA dentro de la card de objetivo
+function renderizarPrediccion(datos) {
+  if (document.getElementById("prediccionSMASection")) return;
+
+  const cont = document.getElementById("objetivosContainer");
+  if (!cont) return;
+
+  const { gasto_ultimo_mes, prediccion_proxima_semana, rango_esperado } = datos;
+  const { minimo, maximo } = rango_esperado;
+
+  const section = document.createElement("div");
+  section.id = "prediccionSMASection";
+  section.innerHTML = `
+    <div class="prediccion-divider"></div>
+    <div class="prediccion-header-row">
+      <span class="panel-title">Predicción próxima semana</span>
+    </div>
+    <div class="prediccion-valor-centrado">
+      <span class="prediccion-num">${formatearEuro(prediccion_proxima_semana)}</span>
+    </div>
+    <div class="prediccion-rango-barra">
+      <div class="prediccion-rango-fill"></div>
+    </div>
+    <div class="prediccion-rango-labels">
+      <span class="prediccion-tag prediccion-tag--green">${formatearEuro(minimo)}</span>
+      <span class="prediccion-tag prediccion-tag--red">${formatearEuro(maximo)}</span>
+    </div>
+    <p class="prediccion-explicacion">
+      Esta probabilidad se calcula mediante una Proyección de Media Móvil Simple.
+      El sistema analiza tu gasto real del último mes, <strong>${formatearEuro(gasto_ultimo_mes)}</strong>, para estimar un comportamiento
+      semanal promedio de <strong>${formatearEuro(prediccion_proxima_semana)}</strong>.
+      Aplicando un margen de un 15%, tus gastos en un escenario austero podrían estar cerca de <strong class="color-green">${formatearEuro(minimo)}</strong>
+      y en un escenario de más gasto en
+      <strong style="color:var(--red);font-weight:700;">${formatearEuro(maximo)}</strong>.
+    </p>
+  `;
+
+  const body = cont.querySelector(".objetivo-body");
+  if (body) body.appendChild(section);
+  else cont.appendChild(section);
+}

@@ -110,7 +110,6 @@
     </header>
 
     <div class="page-title-block anim-1">
-      <div class="page-label">Dashboard</div>
       <h1 class="page-title">Resumen financiero</h1>
     </div>
 
@@ -157,10 +156,6 @@
         </div>
         <div class="chart-wrapper">
           <canvas id="graficoGastos" height="300" aria-label="Gráfico de gastos por categoría" role="img"></canvas>
-          <div class="chart-center-label">
-            <span class="center-value" id="chartCenterValue">—</span>
-            <span class="center-label">total gastos</span>
-          </div>
         </div>
       </div>
 
@@ -203,7 +198,7 @@
       <div class="card-panel" id="objetivosContainer" style="opacity:0;transition:opacity .4s ease;">
         <div class="panel-header">
           <h2 class="panel-title">Objetivo de ahorro</h2>
-          <div style="display:flex;align-items:center;gap:.5rem;">
+          <div style="display:flex;align-items:center;gap:.75rem;">
             <span class="panel-badge" id="objetivoPorcentaje">—</span>
             <button
               class="btn-editar-objetivo"
@@ -217,8 +212,11 @@
           </div>
         </div>
         <div class="objetivo-body">
-          <div class="objetivo-nombre" id="objetivoNombre">
-            <span class="skeleton" style="width:200px;height:1.1rem;display:inline-block;"></span>
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;">
+            <div class="objetivo-nombre" id="objetivoNombre">
+              <span class="skeleton" style="width:200px;height:1.1rem;display:inline-block;"></span>
+            </div>
+            <span class="objetivo-fecha-inline"><span id="objetivoFecha">—</span></span>
           </div>
           <div class="objetivo-barra-wrap" aria-label="Progreso del objetivo">
             <div class="objetivo-barra-track">
@@ -243,13 +241,11 @@
               <span class="objetivo-metrica-valor" id="objetivoDias">—</span>
             </div>
           </div>
-          <div class="objetivo-fecha">
-            📅 Fecha límite: <span id="objetivoFecha">—</span>
-          </div>
         </div>
       </div>
 
     </div>
+
 
     <footer>
       <p class="footer-text">
