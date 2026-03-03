@@ -1159,7 +1159,7 @@ footer {
   padding: .25rem .65rem;
   background: rgba(8, 145, 178, .1);
   border: 1px solid rgba(8, 145, 178, .3);
-  border-radius: 4px;
+  border-radius: 999px;
   color: var(--accent);
   font-size: .7rem;
   font-family: 'DM Mono', monospace;
