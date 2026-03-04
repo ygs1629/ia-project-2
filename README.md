@@ -39,7 +39,6 @@ Este proyecto explora si un agente LLM con memoria y herramientas puede transfor
 El frontend es una aplicación estática que habla con una API FastAPI. Dentro de la API vive el agente: ante cada mensaje del usuario, decide si responder directamente o lanzar una consulta SQL.
 
 ```mermaid
-%%{init: {'theme': 'dark'}}%%
 graph LR
     classDef frontend fill:#1e3a5f,stroke:#4a9eff,stroke-width:2px,color:#fff;
     classDef backend fill:#1a2e1a,stroke:#4caf50,stroke-width:2px,color:#fff;
@@ -215,7 +214,6 @@ El MVP usa una Media Móvil Simple para predecir el gasto semanal: rápida, sin 
 Está desconectada porque el pipeline tarda demasiado para ejecutarse síncronamente junto a las peticiones del usuario. Integrarlo bien requiere un worker separado y un canal asíncrono entre ambos — el siguiente paso natural.
 
 ```mermaid
-%%{init: {'theme': 'dark'}}%%
 graph TD
     classDef node fill:#2e1a3d,stroke:#b47fff,stroke-width:2px,color:#fff;
     classDef decision fill:#3d3422,stroke:#d4a017,stroke-width:2px,color:#fff;
