@@ -10,14 +10,12 @@ async function fetchDashboardData(periodo = "mes") {
   if (!PERIODOS_VALIDOS.includes(periodo)) {
     throw new Error(`Período inválido: "${periodo}". Usar: ${PERIODOS_VALIDOS.join(" | ")}`);
   }
-  const url    = `${BASE_URL}/api/dashboard?periodo=${encodeURIComponent(periodo)}`;
-  const apiKey = localStorage.getItem("google_api_key");
+  const url = `${BASE_URL}/api/dashboard?periodo=${encodeURIComponent(periodo)}`;
 
   const respuesta = await fetch(url, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
-      ...(apiKey && { Authorization: `Bearer ${apiKey}` }),
     },
   });
 
@@ -30,14 +28,12 @@ async function fetchDashboardData(periodo = "mes") {
 // fetchObjetivo — GET /api/objetivo
 
 async function fetchObjetivo() {
-  const url    = `${BASE_URL}/api/objetivo`;
-  const apiKey = localStorage.getItem("google_api_key");
+  const url = `${BASE_URL}/api/objetivo`;
 
   const respuesta = await fetch(url, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
-      ...(apiKey && { Authorization: `Bearer ${apiKey}` }),
     },
   });
 
@@ -54,14 +50,12 @@ async function fetchResumen(periodo) {
     throw new Error(`Período inválido: "${periodo}". Usar: ${PERIODOS_VALIDOS.join(" | ")}`);
   }
 
-  const url    = `${BASE_URL}/api/resumen?periodo=${encodeURIComponent(periodo)}`;
-  const apiKey = localStorage.getItem("google_api_key");
+  const url = `${BASE_URL}/api/resumen?periodo=${encodeURIComponent(periodo)}`;
 
   const respuesta = await fetch(url, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
-      ...(apiKey && { Authorization: `Bearer ${apiKey}` }),
     },
   });
 
@@ -78,14 +72,12 @@ async function fetchTopGastos(periodo, n = 5) {
     throw new Error(`Período inválido: "${periodo}". Usar: ${PERIODOS_VALIDOS.join(" | ")}`);
   }
 
-  const url    = `${BASE_URL}/api/top-gastos?periodo=${encodeURIComponent(periodo)}&n=${n}`;
-  const apiKey = localStorage.getItem("google_api_key");
+  const url = `${BASE_URL}/api/top-gastos?periodo=${encodeURIComponent(periodo)}&n=${n}`;
 
   const respuesta = await fetch(url, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
-      ...(apiKey && { Authorization: `Bearer ${apiKey}` }),
     },
   });
 
@@ -98,14 +90,12 @@ async function fetchTopGastos(periodo, n = 5) {
 // fetchPrediccion — GET /api/predicciones
 
 async function fetchPrediccion() {
-  const url    = `${BASE_URL}/api/predicciones`;
-  const apiKey = localStorage.getItem("google_api_key");
+  const url = `${BASE_URL}/api/predicciones`;
 
   const respuesta = await fetch(url, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
-      ...(apiKey && { Authorization: `Bearer ${apiKey}` }),
     },
   });
 

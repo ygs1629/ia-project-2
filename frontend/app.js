@@ -371,6 +371,8 @@ function _agregarIndicadorTool(toolNombre = null) {
     "get_resumen_ingresos_vs_gastos": "Calculando balance ingresos/gastos…",
     "get_progreso_objetivo":          "Consultando progreso del objetivo…",
     "get_top_gastos":                 "Buscando tus mayores gastos…",
+    "get_ratio_endeudamiento":        "Analizando ratio de endeudamiento…",
+    "evaluar_presupuesto_50_30_20":   "Evaluando regla 50/30/20…",
   };
 
   const texto = (toolNombre && nombres[toolNombre]) ? nombres[toolNombre] : "Consultando base de datos…";

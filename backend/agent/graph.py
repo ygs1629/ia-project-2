@@ -19,7 +19,9 @@ _graph_cache: dict = {}
 
 def _build_system_prompt() -> str:
     hoy = date.today()
-    fecha_str = f"{hoy.day} de {hoy.strftime('%B')} de {hoy.year}"  
+    MESES_ES = ["enero","febrero","marzo","abril","mayo","junio",
+            "julio","agosto","septiembre","octubre","noviembre","diciembre"]
+    fecha_str = f"{hoy.day} de {MESES_ES[hoy.month - 1]} de {hoy.year}"
     dia_semana = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"][hoy.weekday()]
     return (
         f"Eres un asistente financiero personal. "
@@ -52,9 +54,8 @@ def build_graph(api_key: str) -> "CompiledGraph":
         google_api_key=api_key,
     ).bind_tools(ALL_TOOLS)
 
-    system_prompt = SystemMessage(content=_build_system_prompt())
-
     def llm_node(state: AgentState) -> dict:
+        system_prompt = SystemMessage(content=_build_system_prompt())
         response = llm.invoke([system_prompt] + state["messages"])
         return {"messages": [response]}
 

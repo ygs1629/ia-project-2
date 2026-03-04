@@ -207,8 +207,7 @@ def get_ratio_endeudamiento(meses: int = 1) -> dict:
     """
     try:
         hoy = date.today()
-        dias_retroceso = 30 * meses
-        fecha_inicio_periodo = hoy - timedelta(days=dias_retroceso)
+        fecha_inicio_periodo = hoy - relativedelta(months=meses)
         
         with _get_conn() as conn:
             row_ingresos = conn.execute(
