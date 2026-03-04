@@ -42,7 +42,7 @@ El frontend es una aplicación estática que habla con una API FastAPI. Dentro d
 graph LR
     classDef frontend fill:#1e3a5f,stroke:#4a9eff,stroke-width:2px,color:#fff;
     classDef backend fill:#1a2e1a,stroke:#4caf50,stroke-width:2px,color:#fff;
-    classDef db fill:#3d2b00,stroke:#d4a017,stroke-width:2px,color:#fff;
+    classDef db fill:#2e1a3d,stroke:#b47fff,stroke-width:2px,color:#fff;
 
     FE["Frontend\nHTML · Vanilla JS · Chart.js"]
     FE -- "HTTP / REST" --> API
@@ -63,6 +63,8 @@ graph LR
     class FE frontend;
     class API,AGENT,TOOLS,SCRIPTS backend;
     class DB db;
+
+    style FastAPI fill:transparent,stroke:#fff,stroke-width:2px   
 ```
 
 ### Agente LangGraph
@@ -73,7 +75,7 @@ El núcleo es un grafo reactivo sobre `gemini-2.0-flash`. Dos nodos, un ciclo si
 %%{init: {'theme': 'dark'}}%%
 graph TD
     classDef node fill:#2e1a3d,stroke:#b47fff,stroke-width:2px,color:#fff;
-    classDef decision fill:#3d3422,stroke:#d4a017,stroke-width:2px,color:#fff;
+    classDef decision fill:#1a2e1a,stroke:#4caf50,stroke-width:2px,color:#fff;
     classDef io fill:#1e3a5f,stroke:#4a9eff,stroke-width:2px,color:#fff;
 
     U(["Usuario"]) --> LLM["llm_node\nGemini 2.0 Flash"]
@@ -216,7 +218,7 @@ Está desconectada porque el pipeline tarda demasiado para ejecutarse síncronam
 ```mermaid
 graph TD
     classDef node fill:#2e1a3d,stroke:#b47fff,stroke-width:2px,color:#fff;
-    classDef decision fill:#3d3422,stroke:#d4a017,stroke-width:2px,color:#fff;
+    classDef decision fill:#1a2e1a,stroke:#4caf50,stroke-width:2px,color:#fff;
     classDef io fill:#1e3a5f,stroke:#4a9eff,stroke-width:2px,color:#fff;
 
     A(["Transacciones brutas"]) --> B["Preprocesado\nprep_data.py"]
