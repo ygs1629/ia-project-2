@@ -1,4 +1,4 @@
-# <img src="frontend/assets/logo.svg" width="32" align="left"> **Sentinel Finance Engine** Sentinel Finance Engine
+# <img src="logo.svg" width="32" align="left"> **Sentinel Finance Engine** Sentinel Finance Engine
 
 > Tu asistente financiero personal impulsado por IA generativa. Conversa en lenguaje natural sobre tus finanzas y recibe análisis, diagnósticos y recomendaciones en tiempo real — todo desde tus propios datos.
 
