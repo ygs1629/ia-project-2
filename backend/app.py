@@ -62,9 +62,9 @@ app = FastAPI(
 )
 
 ORIGENES_PERMITIDOS = [
-    # URL del tu frontend en producción,
-    "http://localhost:5500",        
-    "http://127.0.0.1:5500"
+    "https://martasolerebri.github.io",
+    "http://localhost:5500",
+    "http://127.0.0.1:5500",
 ]
 
 app.add_middleware(
