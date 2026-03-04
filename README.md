@@ -13,9 +13,7 @@ Asistente financiero personal impulsado por IA generativa. El usuario conversa e
    - [Frontend](#frontend)
    - [Puesta en marcha](#puesta-en-marcha)
 3. [PoC 1.0 — Motor predictivo avanzado (aislado)](#poc-10--motor-predictivo-avanzado-aislado)
-   - [Pipeline en 5 pasos](#pipeline-en-5-pasos)
-   - [Stack técnico del PoC](#stack-técnico-del-poc)
-   - [Principales transiciones al sistema completo](#principales-transiciones-al-sistema-completo)
+   - [Pipeline ML](#pipeline-ML)
 4. [Estructura del repositorio](#estructura-del-repositorio)
 
 ---
@@ -195,7 +193,7 @@ El PoC implementa un **pipeline estadístico y predictivo completo** sobre el hi
 
 Su desconexión del MVP responde a una limitación arquitectónica: el pipeline de forecasting consume demasiado tiempo de cómputo para ejecutarse de forma síncrona en el mismo proceso que atiende las peticiones del usuario. La integración requiere desacoplarlo en un proceso separado y establecer un servicio intermediario que conecte ambos — el proceso principal lo invoca cuando lo necesita y recibe el resultado de forma asíncrona, sin bloquear la interfaz ni dejar al usuario esperando.
 
-### Pipeline en 5 pasos
+### Pipeline ML
 
 ```mermaid
 graph TD
