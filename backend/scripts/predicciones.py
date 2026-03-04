@@ -1,3 +1,7 @@
+"""
+predicciones.py — Predicciones de gasto a una semana vista.
+"""
+
 import sqlite3
 from datetime import date, timedelta
 

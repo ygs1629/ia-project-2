@@ -1,12 +1,5 @@
 """
 utils.py — Funciones y constantes compartidas por todo el backend.
-
-Constantes exportadas:
-    DB_PATH          → ruta única a finanzas.db (antes estaba duplicada en 4 archivos)
-    PERIODOS_VALIDOS → conjunto de periodos aceptados por la API
-
-Funciones exportadas:
-    fecha_inicio(periodo) → date de inicio del periodo como ventana deslizante
 """
 
 from datetime import date, timedelta

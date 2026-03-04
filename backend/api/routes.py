@@ -1,13 +1,5 @@
 """
 routes.py — Endpoints de la API del asistente financiero.
-
-Endpoints que consume el frontend (api.js):
-    GET  /api/dashboard                     → gastos_por_categoria
-    GET  /api/resumen?periodo=X             → { ingresos, gastos, ahorro }
-    GET  /api/top-gastos?periodo=X&n=5      → lista de los N gastos más altos
-    GET  /api/objetivo                      → objetivo de ahorro
-    POST /api/chat                          → mensaje al agente LangGraph
-    POST /api/objetivos                     → crear o actualizar el objetivo
 """
 
 import sqlite3

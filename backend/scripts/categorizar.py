@@ -1,7 +1,5 @@
 """
 categorizar.py — Script de uso único.
-Lee data/transacciones_sucias.csv, clasifica cada Concepto_Bancario
-con la API de Gemini (en batches de 20) y puebla finanzas.db.
 """
 
 import os

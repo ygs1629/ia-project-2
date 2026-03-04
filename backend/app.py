@@ -1,8 +1,5 @@
 """
 app.py — Punto de entrada de la API del asistente financiero.
-Despliegue:
-    Local:              uvicorn app:app --reload --port 8000
-    Hugging Face:       uvicorn app:app --host 0.0.0.0 --port 7860
 """
 
 import sqlite3

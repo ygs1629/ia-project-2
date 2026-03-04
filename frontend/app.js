@@ -6,7 +6,7 @@ let PERIODO_ACTIVO = "mes";
 // referencia al gráfico para poder destruirlo antes de redibujar
 let graficoDonut = null;
 
-// Mapa centralizado de herramientas del agente 
+// mapa centralizado de herramientas del agente 
 const TOOL_TEXTOS = {
   "get_gastos_periodo":             "Consultando gastos por período…",
   "get_evolucion_categoria":        "Analizando evolución de categoría…",

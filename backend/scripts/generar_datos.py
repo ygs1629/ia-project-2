@@ -1,9 +1,5 @@
 """
 generar_datos.py — Script de uso único.
-Genera 18 meses de transacciones bancarias ficticias 
-Perfil simulado: persona con nómina 2.100 €/mes y gastos mensuales
-realistas (1.700-1.900 €/mes), lo que deja un ahorro
-neto de 200-400 €/mes.
 """
 
 import pandas as pd
