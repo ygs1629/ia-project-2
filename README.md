@@ -64,7 +64,7 @@ graph LR
     class API,AGENT,TOOLS,SCRIPTS backend;
     class DB db;
 
-    style FastAPI fill:transparent,stroke:#fff,stroke-width:2px   
+    style FastAPI fill:transparent,stroke:#fff,stroke-width:0px   
 ```
 
 ### Agente LangGraph
