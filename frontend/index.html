@@ -50,42 +50,38 @@
       <input
         type="text"
         id="inputObjetivoNombre"
-        class="modal-input"
+        class="modal-input modal-input--sm"
         placeholder="Ej: Vacaciones de verano"
         autocomplete="off"
         maxlength="80"
         aria-label="Nombre del objetivo"
-        style="margin-bottom:.75rem;"
       />
       <input
         type="number"
         id="inputObjetivoImporte"
-        class="modal-input"
+        class="modal-input modal-input--sm"
         placeholder="Importe total (€), ej: 2000"
         min="1"
         step="0.01"
         aria-label="Importe objetivo en euros"
-        style="margin-bottom:.75rem;"
       />
       <input
         type="number"
         id="inputObjetivoActual"
-        class="modal-input"
+        class="modal-input modal-input--sm"
         placeholder="Ya ahorrado (€), ej: 350 — o 0 si empiezas de cero"
         min="0"
         step="0.01"
         aria-label="Importe ya ahorrado"
-        style="margin-bottom:.75rem;"
       />
       <input
         type="date"
         id="inputObjetivoFecha"
-        class="modal-input"
+        class="modal-input modal-input--lg"
         aria-label="Fecha límite"
-        style="margin-bottom:1.25rem;"
       />
       <button class="modal-btn" onclick="guardarObjetivo()">Guardar objetivo</button>
-      <p id="modalObjetivoError" style="color:var(--red);font-size:.75rem;margin-top:.75rem;display:none;"></p>
+      <p id="modalObjetivoError" class="modal-error"></p>
     </div>
   </div>
 
@@ -101,7 +97,6 @@
         <span class="brand-tag">Finance Engine</span>
       </div>
       <div class="header-meta">
-        <div class="status-dot">Sistema activo</div>
         <div class="header-date" id="fechaActual"></div>
       </div>
     </header>
@@ -180,7 +175,7 @@
     </div>
 
     <!-- top 5 gastos + card de objetivo -->
-    <div class="dashboard-grid anim-7" style="margin-top:1rem;">
+    <div class="dashboard-grid dashboard-grid--lower anim-7">
 
       <div class="card-panel" id="topGastosContainer">
         <div class="panel-header">
@@ -192,7 +187,7 @@
         </ul>
       </div>
 
-      <div class="card-panel" id="objetivosContainer" style="opacity:0;transition:opacity .4s ease;">
+      <div class="card-panel card-panel--pending" id="objetivosContainer">
         <div class="panel-header">
           <h2 class="panel-title">Objetivo de ahorro</h2>
           <div style="display:flex;align-items:center;gap:.75rem;">
@@ -263,7 +258,12 @@
           <div class="chat-header-status">Gemini 2.0 Flash</div>
         </div>
       </div>
-      <button class="chat-btn-toggle" id="btnToggleChat" aria-label="Colapsar chat" onclick="toggleChat()">⌃</button>
+      <div style="display:flex;align-items:center;gap:.25rem;">
+        <button class="chat-btn-toggle" id="btnExpandChat" aria-label="Pantalla completa" onclick="expandChat()" title="Pantalla completa">
+          <svg id="iconExpand" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+        </button>
+        <button class="chat-btn-toggle" id="btnToggleChat" aria-label="Colapsar chat" onclick="toggleChat()">⌃</button>
+      </div>
     </div>
     <div id="chatMensajes" role="log" aria-live="polite"></div>
     <div class="chat-footer">
@@ -289,7 +289,7 @@
   <script>
     document.getElementById("fechaActual").textContent =
       new Date().toLocaleDateString("es-ES", {
-        weekday: "short", year: "numeric", month: "short", day: "numeric"
+        weekday: "long", year: "numeric", month: "long", day: "numeric"
       });
 
     function guardarApiKey() {
@@ -309,13 +309,55 @@
       if (e.key === "Enter") guardarApiKey();
     });
 
+    // ── Chat ───────────────────────────────────────────────────────────────
+    let chatEstado = "normal"; // "normal" | "colapsado" | "full"
+
     function toggleChat() {
-      const chat = document.getElementById("chatContainer");
-      const btn  = document.getElementById("btnToggleChat");
-      const col  = chat.classList.toggle("colapsado");
-      btn.textContent = col ? "⌄" : "⌃";
-      btn.setAttribute("aria-label", col ? "Expandir chat" : "Colapsar chat");
+      if (chatEstado === "full")        _salirDeFull();
+      else if (chatEstado === "normal") _setEstado("colapsado");
+      else                              _setEstado("normal");
     }
+
+    function expandChat() {
+      if (chatEstado === "full") _salirDeFull();
+      else                        _setEstado("full");
+    }
+
+    function _setEstado(nuevo) {
+      const chat      = document.getElementById("chatContainer");
+      const btnToggle = document.getElementById("btnToggleChat");
+      const btnExpand = document.getElementById("btnExpandChat");
+
+      chatEstado = nuevo;
+      chat.classList.remove("colapsado", "chat-fullscreen");
+
+      if (nuevo === "colapsado") {
+        chat.classList.add("colapsado");
+        btnToggle.textContent = "⌄";
+        btnExpand.style.display = "none";
+
+      } else if (nuevo === "full") {
+        chat.classList.add("chat-fullscreen");
+        btnToggle.textContent = "⌃";
+        btnExpand.style.display = "";
+        btnExpand.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>`;
+        const msgs = document.getElementById("chatMensajes");
+        if (msgs) setTimeout(() => msgs.scrollTop = msgs.scrollHeight, 50);
+
+      } else { // normal
+        btnToggle.textContent = "⌃";
+        btnExpand.style.display = "";
+        btnExpand.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>`;
+      }
+    }
+
+    function _salirDeFull() {
+      _setEstado("normal");
+    }
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && chatEstado === "full") _salirDeFull();
+    });
   </script>
 
 </body>

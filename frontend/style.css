@@ -170,25 +170,6 @@ header {
   gap: 1.25rem;
 }
 
-.status-dot {
-  display: flex;
-  align-items: center;
-  gap: .4rem;
-  font-size: .7rem;
-  color: var(--text-secondary);
-  letter-spacing: .04em;
-  text-transform: uppercase;
-}
-
-.status-dot::before {
-  content: '';
-  width: 7px; height: 7px;
-  border-radius: 50%;
-  background: var(--green);
-  box-shadow: 0 0 8px var(--green);
-  animation: fadeIn 1s infinite alternate;
-}
-
 .header-date {
   font-size: .72rem;
   color: var(--text-muted);
@@ -331,6 +312,9 @@ header {
   margin-top: 1rem;
 }
 
+/* segunda fila del dashboard */
+.dashboard-grid--lower { margin-top: 1rem; }
+
 /* paneles genéricos */
 .card-panel {
   background: var(--bg-card);
@@ -342,6 +326,12 @@ header {
 }
 
 .card-panel:hover { border-color: var(--border-bright); }
+
+/* card aún sin datos — se hace visible cuando llegan */
+.card-panel--pending {
+  opacity: 0;
+  transition: opacity .4s ease;
+}
 
 .panel-header {
   display: flex;
@@ -472,7 +462,7 @@ header {
   transition: width .8s ease;
 }
 
-/* chat flotante */
+/* chat fijo */
 #chatContainer {
   position: fixed;
   bottom: 1.75rem;
@@ -480,19 +470,22 @@ header {
   width: 360px;
   max-height: 520px;
   background: var(--bg-card);
-  border: 1px solid var(--border-bright);
+  border: 1px solid var(--border);
   border-radius: var(--radius-xl);
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(37, 99, 235, .08);
+  box-shadow: var(--shadow-card);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   z-index: 500;
   animation: fadeUp .5s .8s ease both;
-  transition: box-shadow .25s;
+  transition: box-shadow .25s, border-color .25s;
+  /* fijo: sin left/top dinámicos */
+  left: unset !important;
+  top: unset !important;
 }
 
 #chatContainer:focus-within {
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.7), 0 0 0 2px var(--accent);
+  border-color: var(--border-bright);
 }
 
 .chat-header {
@@ -503,6 +496,7 @@ header {
   border-bottom: 1px solid var(--border);
   background: var(--bg-surface);
   flex-shrink: 0;
+  cursor: default;
 }
 
 .chat-header-info {
@@ -531,7 +525,7 @@ header {
 
 .chat-header-status {
   font-size: .62rem;
-  color: var(--green);
+  color: var(--accent);
   letter-spacing: .06em;
 }
 
@@ -688,6 +682,27 @@ header {
   stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
 }
 
+#chatContainer.chat-fullscreen {
+  position: fixed !important;
+  inset: .75rem !important;
+  width: calc(100vw - 1.5rem) !important;
+  height: calc(100vh - 1.5rem) !important;
+  max-height: calc(100vh - 1.5rem) !important;
+  border-radius: var(--radius-lg) !important;
+  border-color: var(--border-bright) !important;
+  z-index: 600;
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.8);
+}
+
+#chatContainer.chat-fullscreen #chatMensajes {
+  max-height: none;
+  flex: 1;
+}
+
+#chatContainer.chat-fullscreen::before {
+  display: none;
+}
+
 #chatContainer.colapsado #chatMensajes,
 #chatContainer.colapsado .chat-footer {
   display: none;
@@ -770,6 +785,10 @@ header {
 
 .modal-input::placeholder { color: var(--text-muted); }
 
+/* espaciado entre campos del modal */
+.modal-input--sm { margin-bottom: .75rem; }
+.modal-input--lg { margin-bottom: 1.25rem; }
+
 .modal-btn {
   width: 100%;
   padding: .85rem;
@@ -797,6 +816,14 @@ header {
   text-align: center;
   margin-top: .9rem;
   line-height: 1.6;
+}
+
+/* error inline en el modal de objetivo */
+.modal-error {
+  display: none;
+  color: var(--red);
+  font-size: .75rem;
+  margin-top: .75rem;
 }
 
 /* toast de error global */
@@ -925,6 +952,11 @@ footer {
   gap: .5rem;
 }
 
+.objetivo-metricas--prediccion {
+  grid-template-columns: repeat(3, 1fr);
+  margin: .9rem 0;
+}
+
 @media (max-width: 600px) {
   .objetivo-metricas { grid-template-columns: repeat(2, 1fr); }
 }
@@ -956,6 +988,7 @@ footer {
 
 .color-green { color: var(--green) !important; }
 .color-amber { color: var(--amber) !important; }
+.color-red   { color: var(--red)   !important; }
 
 .objetivo-fecha-inline {
   font-size: .72rem;
@@ -1307,6 +1340,3 @@ footer {
 .prediccion-explicacion strong {
   color: var(--text-primary);
 }
-
-.color-green { color: var(--green); }
-.color-red   { color: var(--red); }

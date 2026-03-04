@@ -602,16 +602,10 @@ async function inicializarDashboard() {
   }
 }
 
-// toast de error en la esquina inferior derecha y desaparece a los 8 segundos
+// muestra el toast de error global (estilos definidos en style.css #errorGlobal)
 function mostrarErrorGlobal(mensaje) {
-  let el = document.getElementById("errorGlobal");
-  if (!el) {
-    el = document.createElement("div");
-    el.id = "errorGlobal";
-    el.style.cssText =
-      "position:fixed;bottom:1.5rem;right:1.5rem;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.4);border-left:3px solid #EF4444;color:#FCA5A5;padding:.9rem 1.25rem;border-radius:6px;font-size:.75rem;max-width:360px;z-index:9999;";
-    document.body.appendChild(el);
-  }
+  const el = document.getElementById("errorGlobal");
+  if (!el) return;
   el.textContent = `⚠ Error SFE: ${mensaje}`;
   el.style.display = "block";
   setTimeout(() => { el.style.display = "none"; }, 8000);
@@ -670,23 +664,27 @@ function renderizarPrediccion(datos) {
     <div class="prediccion-header-row">
       <span class="panel-title">Predicción próxima semana</span>
     </div>
-    <div class="prediccion-valor-centrado">
-      <span class="prediccion-num">${formatearEuro(prediccion_proxima_semana)}</span>
+    <div class="objetivo-metricas objetivo-metricas--prediccion">
+      <div class="objetivo-metrica">
+        <span class="objetivo-metrica-label">Máximo</span>
+        <span class="objetivo-metrica-valor color-red">${formatearEuro(maximo)}</span>
+      </div>
+      <div class="objetivo-metrica">
+        <span class="objetivo-metrica-label">Estimado</span>
+        <span class="objetivo-metrica-valor">${formatearEuro(prediccion_proxima_semana)}</span>
+      </div>
+      <div class="objetivo-metrica">
+        <span class="objetivo-metrica-label">Mínimo</span>
+        <span class="objetivo-metrica-valor color-green">${formatearEuro(minimo)}</span>
+      </div>
     </div>
     <div class="prediccion-rango-barra">
       <div class="prediccion-rango-fill"></div>
     </div>
-    <div class="prediccion-rango-labels">
-      <span class="prediccion-tag prediccion-tag--green">${formatearEuro(minimo)}</span>
-      <span class="prediccion-tag prediccion-tag--red">${formatearEuro(maximo)}</span>
-    </div>
     <p class="prediccion-explicacion">
-      Esta probabilidad se calcula mediante una Proyección de Media Móvil Simple.
-      El sistema analiza tu gasto real del último mes, <strong>${formatearEuro(gasto_ultimo_mes)}</strong>, para estimar un comportamiento
-      semanal promedio de <strong>${formatearEuro(prediccion_proxima_semana)}</strong>.
-      Aplicando un margen de un 15%, tus gastos en un escenario austero podrían estar cerca de <strong class="color-green">${formatearEuro(minimo)}</strong>
-      y en un escenario de más gasto en
-      <strong style="color:var(--red);font-weight:700;">${formatearEuro(maximo)}</strong>.
+      Basándonos en tu gasto del último mes (<strong>${formatearEuro(gasto_ultimo_mes)}</strong>), la semana que viene podrías gastar alrededor de <strong>${formatearEuro(prediccion_proxima_semana)}</strong>.
+      En el mejor caso, si controlas los gastos, podrías quedarte en <strong class="color-green">${formatearEuro(minimo)}</strong>.
+      Si hay imprevistos o gastas más de lo habitual, podrías llegar hasta <strong style="color:var(--red);font-weight:700;">${formatearEuro(maximo)}</strong>.
     </p>
   `;
 
