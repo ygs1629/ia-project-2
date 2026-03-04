@@ -6,6 +6,17 @@ let PERIODO_ACTIVO = "mes";
 // referencia al gráfico para poder destruirlo antes de redibujar
 let graficoDonut = null;
 
+// Mapa centralizado de herramientas del agente 
+const TOOL_TEXTOS = {
+  "get_gastos_periodo":             "Consultando gastos por período…",
+  "get_evolucion_categoria":        "Analizando evolución de categoría…",
+  "get_resumen_ingresos_vs_gastos": "Calculando balance ingresos/gastos…",
+  "get_progreso_objetivo":          "Consultando progreso del objetivo…",
+  "get_top_gastos":                 "Buscando tus mayores gastos…",
+  "get_ratio_endeudamiento":        "Analizando ratio de endeudamiento…",
+  "evaluar_presupuesto_50_30_20":   "Evaluando regla 50/30/20…",
+};
+
 const COLORES_CATEGORIAS = {
   Vivienda:      "#0891B2",
   Supermercado:  "#0D9488",
@@ -246,7 +257,7 @@ function renderizarObjetivo(obj) {
   const elFecha = document.getElementById("objetivoFecha");
   if (elFecha) {
     elFecha.dataset.raw = obj.fecha_limite;
-    elFecha.textContent = new Date(obj.fecha_limite).toLocaleDateString("es-ES", {
+    elFecha.textContent = new Date(obj.fecha_limite + "T00:00:00").toLocaleDateString("es-ES", {
       day: "numeric", month: "long", year: "numeric",
     });
   }
@@ -313,25 +324,54 @@ function renderizarTopGastos(lista) {
 
   lista.forEach((gasto, idx) => {
     const color = COLORES_CATEGORIAS[gasto.categoria] ?? "#6B7280";
-    const fechaFormateada = new Date(gasto.fecha).toLocaleDateString("es-ES", {
+    const fechaFormateada = new Date(gasto.fecha + "T00:00:00").toLocaleDateString("es-ES", {
       day: "numeric", month: "short",
     });
 
     const item = document.createElement("li");
     item.classList.add("top-gastos-item");
     item.style.animationDelay = `${idx * 60}ms`;
-    item.innerHTML = `
-      <span class="top-gastos-rank">${idx + 1}</span>
-      <span class="top-gastos-dot" style="background:${color}"></span>
-      <div class="top-gastos-info">
-        <span class="top-gastos-concepto">${gasto.concepto}</span>
-        <span class="top-gastos-meta">
-          <span class="top-gastos-cat" style="color:${color}">${gasto.categoria}</span>
-          <span class="top-gastos-fecha">${fechaFormateada}</span>
-        </span>
-      </div>
-      <span class="top-gastos-importe">${formatearEuro(gasto.importe)}</span>
-    `;
+
+    const rank = document.createElement("span");
+    rank.className = "top-gastos-rank";
+    rank.textContent = String(idx + 1);
+
+    const dot = document.createElement("span");
+    dot.className = "top-gastos-dot";
+    dot.style.background = color;
+
+    const info = document.createElement("div");
+    info.className = "top-gastos-info";
+
+    const concepto = document.createElement("span");
+    concepto.className = "top-gastos-concepto";
+    concepto.textContent = gasto.concepto;
+
+    const meta = document.createElement("span");
+    meta.className = "top-gastos-meta";
+
+    const cat = document.createElement("span");
+    cat.className = "top-gastos-cat";
+    cat.style.color = color;
+    cat.textContent = gasto.categoria;
+
+    const fecha = document.createElement("span");
+    fecha.className = "top-gastos-fecha";
+    fecha.textContent = fechaFormateada;
+
+    meta.appendChild(cat);
+    meta.appendChild(fecha);
+    info.appendChild(concepto);
+    info.appendChild(meta);
+
+    const importe = document.createElement("span");
+    importe.className = "top-gastos-importe";
+    importe.textContent = formatearEuro(gasto.importe);
+
+    item.appendChild(rank);
+    item.appendChild(dot);
+    item.appendChild(info);
+    item.appendChild(importe);
     contenedor.appendChild(item);
   });
 }
@@ -365,17 +405,7 @@ function _agregarIndicadorTool(toolNombre = null) {
   const indicador = document.createElement("div");
   indicador.classList.add("chat-tool-indicator");
 
-  const nombres = {
-    "get_gastos_periodo":             "Consultando gastos por período…",
-    "get_evolucion_categoria":        "Analizando evolución de categoría…",
-    "get_resumen_ingresos_vs_gastos": "Calculando balance ingresos/gastos…",
-    "get_progreso_objetivo":          "Consultando progreso del objetivo…",
-    "get_top_gastos":                 "Buscando tus mayores gastos…",
-    "get_ratio_endeudamiento":        "Analizando ratio de endeudamiento…",
-    "evaluar_presupuesto_50_30_20":   "Evaluando regla 50/30/20…",
-  };
-
-  const texto = (toolNombre && nombres[toolNombre]) ? nombres[toolNombre] : "Consultando base de datos…";
+  const texto = (toolNombre && TOOL_TEXTOS[toolNombre]) ? TOOL_TEXTOS[toolNombre] : "Consultando base de datos…";
 
   indicador.innerHTML = `
     <span class="tool-icon">⚙</span>
@@ -412,15 +442,8 @@ async function enviarMensaje() {
 
     if (indicadorDB) {
       if (data.tool_usada) {
-        const textos = {
-          "get_gastos_periodo":             "Consultando gastos por período…",
-          "get_evolucion_categoria":        "Analizando evolución de categoría…",
-          "get_resumen_ingresos_vs_gastos": "Calculando balance ingresos/gastos…",
-          "get_progreso_objetivo":          "Consultando progreso del objetivo…",
-          "get_top_gastos":                 "Buscando tus mayores gastos…",
-        };
         const spanTexto = indicadorDB.querySelector(".tool-texto");
-        if (spanTexto) spanTexto.textContent = textos[data.tool_usada] || "Consultando base de datos…";
+        if (spanTexto) spanTexto.textContent = TOOL_TEXTOS[data.tool_usada] || "Consultando base de datos…";
         indicadorDB.classList.remove("chat-tool-pending");
         indicadorDB.classList.add("chat-tool-done");
         setTimeout(() => { indicadorDB.style.maxHeight = "0"; indicadorDB.style.opacity = "0"; }, 2000);
@@ -647,15 +670,27 @@ document.addEventListener("DOMContentLoaded", () => {
   }, 1200);
 });
 
-// renderiza la sección de predicción SMA dentro de la card de objetivo
+// renderiza (o actualiza) la sección de predicción SMA dentro de la card de objetivo
 function renderizarPrediccion(datos) {
-  if (document.getElementById("prediccionSMASection")) return;
-
   const cont = document.getElementById("objetivosContainer");
   if (!cont) return;
 
   const { gasto_ultimo_mes, prediccion_proxima_semana, rango_esperado } = datos;
   const { minimo, maximo } = rango_esperado;
+
+  const existing = document.getElementById("prediccionSMASection");
+  if (existing) {
+    existing.querySelector(".sma-maximo").textContent   = formatearEuro(maximo);
+    existing.querySelector(".sma-estimado").textContent = formatearEuro(prediccion_proxima_semana);
+    existing.querySelector(".sma-minimo").textContent   = formatearEuro(minimo);
+    existing.querySelector(".sma-explicacion").innerHTML =
+      `Basándonos en tu gasto del último mes (<strong>${formatearEuro(gasto_ultimo_mes)}</strong>), ` +
+      `la semana que viene podrías gastar alrededor de <strong>${formatearEuro(prediccion_proxima_semana)}</strong>. ` +
+      `En el mejor caso, si controlas los gastos, podrías quedarte en <strong class="color-green">${formatearEuro(minimo)}</strong>. ` +
+      `Si hay imprevistos o gastas más de lo habitual, podrías llegar hasta ` +
+      `<strong style="color:var(--red);font-weight:700;">${formatearEuro(maximo)}</strong>.`;
+    return;
+  }
 
   const section = document.createElement("div");
   section.id = "prediccionSMASection";
@@ -666,22 +701,22 @@ function renderizarPrediccion(datos) {
     </div>
     <div class="objetivo-metricas objetivo-metricas--prediccion">
       <div class="objetivo-metrica">
-        <span class="objetivo-metrica-label">Máximo</span>
-        <span class="objetivo-metrica-valor color-red">${formatearEuro(maximo)}</span>
+        <span class="objetivo-metrica-label">Mínimo</span>
+        <span class="objetivo-metrica-valor color-green sma-minimo">${formatearEuro(minimo)}</span>
       </div>
       <div class="objetivo-metrica">
         <span class="objetivo-metrica-label">Estimado</span>
-        <span class="objetivo-metrica-valor">${formatearEuro(prediccion_proxima_semana)}</span>
+        <span class="objetivo-metrica-valor sma-estimado">${formatearEuro(prediccion_proxima_semana)}</span>
       </div>
       <div class="objetivo-metrica">
-        <span class="objetivo-metrica-label">Mínimo</span>
-        <span class="objetivo-metrica-valor color-green">${formatearEuro(minimo)}</span>
+        <span class="objetivo-metrica-label">Máximo</span>
+        <span class="objetivo-metrica-valor color-red sma-maximo">${formatearEuro(maximo)}</span>
       </div>
     </div>
     <div class="prediccion-rango-barra">
       <div class="prediccion-rango-fill"></div>
     </div>
-    <p class="prediccion-explicacion">
+    <p class="prediccion-explicacion sma-explicacion">
       Basándonos en tu gasto del último mes (<strong>${formatearEuro(gasto_ultimo_mes)}</strong>), la semana que viene podrías gastar alrededor de <strong>${formatearEuro(prediccion_proxima_semana)}</strong>.
       En el mejor caso, si controlas los gastos, podrías quedarte en <strong class="color-green">${formatearEuro(minimo)}</strong>.
       Si hay imprevistos o gastas más de lo habitual, podrías llegar hasta <strong style="color:var(--red);font-weight:700;">${formatearEuro(maximo)}</strong>.

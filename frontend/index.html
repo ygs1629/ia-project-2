@@ -294,14 +294,49 @@
 
     function guardarApiKey() {
       const input = document.getElementById("inputApiKey");
+      const btn   = document.querySelector("#modalApiKey .modal-btn");
       const valor = input?.value.trim() ?? "";
+
       if (!valor) {
         input.style.borderColor = "var(--red)";
         input.placeholder = "⚠  La clave no puede estar vacía";
         return;
       }
+
+      if (btn) { btn.disabled = true; btn.textContent = "Verificando…"; }
+      input.disabled = true;
+
+      fetch(`${BASE_URL}/api/predicciones`, {
+        headers: { Authorization: `Bearer ${valor}` },
+      })
+        .then((res) => {
+          if (res.status === 401 || res.status === 403) {
+            throw new Error("API Key inválida o sin permisos.");
+          }
+        })
+        .catch((err) => {
+          const esRedError = err instanceof TypeError; 
+          if (!esRedError) {
+            input.style.borderColor = "var(--red)";
+            const note = document.querySelector("#modalApiKey .modal-note");
+            if (note) { note.style.color = "var(--red)"; note.textContent = `⚠ ${err.message}`; }
+            if (btn) { btn.disabled = false; btn.textContent = "Guardar y continuar"; }
+            input.disabled = false;
+            return;
+          }
+          _guardarYContinuar(valor, input, btn);
+        })
+        .then((ok) => {
+          if (ok !== undefined) return; 
+          _guardarYContinuar(valor, input, btn);
+        });
+    }
+
+    function _guardarYContinuar(valor, input, btn) {
       localStorage.setItem("google_api_key", valor);
       document.getElementById("modalApiKey").style.display = "none";
+      if (btn) { btn.disabled = false; btn.textContent = "Guardar y continuar"; }
+      if (input) input.disabled = false;
       inicializarDashboard();
     }
 
@@ -309,8 +344,7 @@
       if (e.key === "Enter") guardarApiKey();
     });
 
-    // ── Chat ───────────────────────────────────────────────────────────────
-    let chatEstado = "normal"; // "normal" | "colapsado" | "full"
+    let chatEstado = "normal"; 
 
     function toggleChat() {
       if (chatEstado === "full")        _salirDeFull();
@@ -344,7 +378,7 @@
         const msgs = document.getElementById("chatMensajes");
         if (msgs) setTimeout(() => msgs.scrollTop = msgs.scrollHeight, 50);
 
-      } else { // normal
+      } else { 
         btnToggle.textContent = "⌃";
         btnExpand.style.display = "";
         btnExpand.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>`;

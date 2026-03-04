@@ -1,6 +1,11 @@
 // api.js — Módulo de comunicación con el backend
 
-const BASE_URL = "http://localhost:8000";
+const BASE_URL = (() => {
+  if (window.SFE_API_URL) return window.SFE_API_URL.replace(/\/$/, "");
+  const { hostname, port } = window.location;
+  const isLocal = hostname === "localhost" || hostname === "127.0.0.1";
+  return isLocal ? `http://${hostname}:8000` : "";
+})();
 
 const PERIODOS_VALIDOS = ["semana", "mes", "trimestre", "semestre", "anual"];
 
