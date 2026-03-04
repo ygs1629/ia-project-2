@@ -7,14 +7,12 @@ Despliegue:
 
 import sqlite3
 from contextlib import asynccontextmanager
-from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.routes import router
-
-DB_PATH = Path(__file__).parent / "data" / "finanzas.db"
+from utils import DB_PATH  
 
 def init_db() -> None:
     """
@@ -22,6 +20,12 @@ def init_db() -> None:
     Se ejecuta una sola vez al arrancar el servidor, garantizando
     que el esquema esté listo independientemente de si se han
     ejecutado los scripts de datos o no.
+
+    Nota de diseño — tabla objetivos:
+        La aplicación soporta UN único objetivo de ahorro activo.
+        La tabla usa id=1 fijo: POST /api/objetivos hace DELETE + INSERT con id=1,
+        y GET /api/objetivo devuelve ese registro.
+        Se ha eliminado AUTOINCREMENT para reflejar esta semántica explícitamente.
     """
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     with sqlite3.connect(DB_PATH) as conn:
@@ -35,7 +39,7 @@ def init_db() -> None:
             );
 
             CREATE TABLE IF NOT EXISTS objetivos (
-                id               INTEGER PRIMARY KEY AUTOINCREMENT,
+                id               INTEGER PRIMARY KEY,
                 nombre           TEXT    NOT NULL UNIQUE,
                 importe_objetivo REAL    NOT NULL,
                 importe_actual   REAL    NOT NULL DEFAULT 0,

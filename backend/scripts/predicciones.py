@@ -1,20 +1,16 @@
 import sqlite3
 from datetime import date, timedelta
-from pathlib import Path
 
-DB_PATH = Path(__file__).resolve().parents[1] / "data" / "finanzas.db"
+from utils import DB_PATH  
 
 class GastosPredictor:
     """
     Servicio de predicción ligero para el MVP.
     Utiliza una Media Móvil Simple (SMA) basada en el último mes de transacciones.
     """
-    
-    def __init__(self):
-        self.db_path = DB_PATH
 
     def _get_conn(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
         return conn
 

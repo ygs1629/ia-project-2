@@ -1,13 +1,24 @@
 """
-utils.py — Funciones compartidas entre agent/tools.py y api/routes.py.
+utils.py — Funciones y constantes compartidas por todo el backend.
+
+Constantes exportadas:
+    DB_PATH          → ruta única a finanzas.db (antes estaba duplicada en 4 archivos)
+    PERIODOS_VALIDOS → conjunto de periodos aceptados por la API
+
+Funciones exportadas:
+    fecha_inicio(periodo) → date de inicio del periodo como ventana deslizante
 """
 
 from datetime import date, timedelta
+from pathlib import Path
+
 from dateutil.relativedelta import relativedelta
 
+DB_PATH: Path = Path(__file__).parent / "data" / "finanzas.db"
 
-PERIODOS_VALIDOS = {"semana", "mes", "trimestre", "semestre", "anual"}
-
+PERIODOS_VALIDOS: frozenset[str] = frozenset(
+    {"semana", "mes", "trimestre", "semestre", "anual"}
+)
 
 def fecha_inicio(periodo: str) -> date:
     """

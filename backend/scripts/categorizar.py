@@ -16,7 +16,10 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 BASE_DIR = Path(__file__).parent.parent
 CSV_PATH = BASE_DIR / "data" / "transacciones_sucias.csv"
-DB_PATH  = BASE_DIR / "data" / "finanzas.db"
+
+import sys
+sys.path.insert(0, str(BASE_DIR))
+from utils import DB_PATH
 
 CATEGORIAS = [
     "Vivienda",

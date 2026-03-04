@@ -12,7 +12,6 @@ Endpoints que consume el frontend (api.js):
 
 import sqlite3
 from datetime import date
-from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
@@ -21,11 +20,11 @@ from pydantic import BaseModel
 
 from agent.graph import build_graph
 from scripts.predicciones import GastosPredictor
-from utils import fecha_inicio, PERIODOS_VALIDOS
+from utils import fecha_inicio, PERIODOS_VALIDOS, DB_PATH  
 
-DB_PATH = Path(__file__).parent.parent / "data" / "finanzas.db"
+_predictor = GastosPredictor()
 
-MAX_MENSAJE_CHARS = 4_000     
+MAX_MENSAJE_CHARS = 4_000
 
 router = APIRouter(prefix="/api")
 
@@ -201,8 +200,7 @@ def get_predicciones():
     Devuelve la predicción de gasto para la próxima semana
     usando una Media Móvil Simple (SMA) sobre los últimos 30 días.
     """
-    predictor = GastosPredictor()
-    return predictor.predecir_proxima_semana()
+    return _predictor.predecir_proxima_semana()
 
 # POST /api/objetivos
 

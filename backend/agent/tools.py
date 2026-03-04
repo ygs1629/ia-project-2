@@ -3,16 +3,14 @@ tools.py — Herramientas que el agente LangGraph puede invocar.
 """
 
 import sqlite3
-from datetime import date,timedelta
+from datetime import date
 from pathlib import Path
 
 from dateutil.relativedelta import relativedelta
 
 from langchain_core.tools import tool
 
-from utils import fecha_inicio
-
-DB_PATH = Path(__file__).parent.parent / "data" / "finanzas.db"
+from utils import fecha_inicio, DB_PATH  
 
 
 def _get_conn() -> sqlite3.Connection:
@@ -65,8 +63,8 @@ def get_evolucion_categoria(categoria: str, meses: int = 6) -> list[dict]:
     ordenada de más antiguo a más reciente.
     """
     hoy = date.today()
-    
-    inicio = date(hoy.year, hoy.month, 1) - relativedelta(months=meses)
+
+    inicio = hoy - relativedelta(months=meses)
 
     sql = """
         SELECT strftime('%Y-%m', fecha) AS mes,
@@ -268,30 +266,29 @@ def evaluar_presupuesto_50_30_20(meses: int = 1) -> dict:
     """
     try:
         hoy = date.today()
-        dias_retroceso = 30 * meses
-        fecha_inicio_periodo = hoy - timedelta(days=dias_retroceso)
-        
+        fecha_inicio_periodo = hoy - relativedelta(months=meses)
+
         with _get_conn() as conn:
             row_ingresos = conn.execute(
-                "SELECT SUM(importe) AS total FROM transacciones WHERE importe > 0 AND fecha >= ?", 
+                "SELECT SUM(importe) AS total FROM transacciones WHERE importe > 0 AND fecha >= ?",
                 (fecha_inicio_periodo.isoformat(),)
             ).fetchone()
             ingresos = float(row_ingresos["total"]) if row_ingresos["total"] else 0.0
-            
+
             if ingresos == 0:
                 return {"error": f"No hay ingresos en los últimos {meses} meses para evaluar el presupuesto."}
 
             sql_necesidades = """
-                SELECT ABS(SUM(importe)) AS total FROM transacciones 
-                WHERE importe < 0 AND fecha >= ? 
+                SELECT ABS(SUM(importe)) AS total FROM transacciones
+                WHERE importe < 0 AND fecha >= ?
                 AND categoria IN ('Vivienda', 'Supermercado', 'Transporte', 'Suministros', 'Salud')
             """
             row_nec = conn.execute(sql_necesidades, (fecha_inicio_periodo.isoformat(),)).fetchone()
             gastos_necesidades = float(row_nec["total"]) if row_nec["total"] else 0.0
 
             sql_deseos = """
-                SELECT ABS(SUM(importe)) AS total FROM transacciones 
-                WHERE importe < 0 AND fecha >= ? 
+                SELECT ABS(SUM(importe)) AS total FROM transacciones
+                WHERE importe < 0 AND fecha >= ?
                 AND categoria IN ('Restaurantes', 'Ocio', 'Suscripciones', 'Otros')
             """
             row_des = conn.execute(sql_deseos, (fecha_inicio_periodo.isoformat(),)).fetchone()
